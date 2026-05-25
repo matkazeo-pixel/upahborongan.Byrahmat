@@ -1,0 +1,2611 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Upah Borongan</title>
+
+<!-- ═══ PWA META ═══ -->
+<meta name="application-name" content="Upah Borongan">
+<meta name="description" content="Aplikasi pencatatan upah borongan produksi — hitung, catat, dan kelola upah pegawai.">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="background-color" content="#0a0f1e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Upah Borongan">
+<meta name="msapplication-TileColor" content="#0a0f1e">
+<meta name="msapplication-tap-highlight" content="no">
+<meta name="format-detection" content="telephone=no">
+
+<!-- ═══ PWA MANIFEST (inline via blob) ═══ -->
+<script>
+(function(){
+  const icons = [
+    { src: _makeIcon(192), sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+    { src: _makeIcon(512), sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+  ];
+  function _makeIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    // Background gradient
+    const g = ctx.createLinearGradient(0, 0, size, size);
+    g.addColorStop(0, '#0d1b40'); g.addColorStop(1, '#0a2647');
+    ctx.fillStyle = g;
+    const r = size * 0.18;
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(size-r, 0);
+    ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size-r);
+    ctx.quadraticCurveTo(size, size, size-r, size);
+    ctx.lineTo(r, size);
+    ctx.quadraticCurveTo(0, size, 0, size-r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath(); ctx.fill();
+    // Calculator icon
+    const s = size * 0.55, ox = (size-s)/2, oy = (size-s)/2;
+    ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = size * 0.045;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // body
+    ctx.beginPath();
+    ctx.roundRect(ox, oy, s, s, size*0.07);
+    ctx.stroke();
+    // display bar
+    const dh = s*0.22, dp = s*0.09;
+    ctx.fillStyle = 'rgba(96,165,250,0.2)';
+    ctx.beginPath(); ctx.roundRect(ox+dp, oy+dp, s-dp*2, dh, size*0.03); ctx.fill();
+    ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = size*0.03;
+    ctx.beginPath(); ctx.roundRect(ox+dp, oy+dp, s-dp*2, dh, size*0.03); ctx.stroke();
+    // buttons grid (3x3)
+    const btnS = s*0.13, gap = (s - dp*2 - btnS*3) / 2, startY = oy + dp + dh + dp*0.8;
+    [[0,0,'#34d399'],[1,0,'#60a5fa'],[2,0,'#60a5fa'],
+     [0,1,'#60a5fa'],[1,1,'#60a5fa'],[2,1,'#60a5fa'],
+     [0,2,'#60a5fa'],[1,2,'#60a5fa'],[2,2,'#fb923c']].forEach(([col,row,color])=>{
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(ox+dp+col*(btnS+gap), startY+row*(btnS+gap*0.7), btnS, btnS, size*0.02);
+      ctx.fill();
+    });
+    return c.toDataURL('image/png');
+  }
+  const manifest = {
+    name: 'Upah Borongan',
+    short_name: 'Upah Borongan',
+    description: 'Aplikasi pencatatan upah borongan produksi',
+    start_url: window.location.href,
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0a0f1e',
+    theme_color: '#0a0f1e',
+    lang: 'id',
+    categories: ['productivity', 'business'],
+    icons: icons.map(ic=>({...ic, src: _makeIcon(parseInt(ic.sizes))})),
+    shortcuts: [
+      { name: 'Input Batch Baru', short_name: 'Input', description: 'Tambah batch baru', url: window.location.href },
+    ],
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = url;
+  document.head.appendChild(link);
+
+  // Apple touch icon
+  const appleIcon = _makeIcon(180);
+  const appleLink = document.createElement('link');
+  appleLink.rel = 'apple-touch-icon'; appleLink.href = appleIcon;
+  document.head.appendChild(appleLink);
+
+  // Favicon
+  const favLink = document.createElement('link');
+  favLink.rel = 'icon'; favLink.type = 'image/png'; favLink.href = _makeIcon(64);
+  document.head.appendChild(favLink);
+})();
+</script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%;scroll-behavior:smooth;height:-webkit-fill-available}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;min-height:100vh;min-height:-webkit-fill-available;overflow-x:hidden;transition:background .3s,color .3s;-webkit-tap-highlight-color:transparent}
+button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+:root{
+  --brand:#2563eb;--brand-dark:#1d4ed8;--brand-light:#eff6ff;--brand-ring:rgba(37,99,235,.15);
+  --green:#059669;--green-light:#f0fdf4;--amber:#d97706;--amber-light:#fffbeb;
+  --rose:#e11d48;--purple:#7c3aed;--purple-light:#f5f3ff;
+  --ink:#0f172a;--muted:#64748b;--subtle:#94a3b8;
+  --border:#e2e8f0;--surface:#f8fafc;--white:#ffffff;--bg:#f1f5f9;
+  --card-bg:#ffffff;--card-border:#e2e8f0;
+  --radius:12px;--radius-lg:18px;--radius-xl:24px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.12);
+  --inp-bg:#f8fafc;--inp-border:#e2e8f0;--inp-color:#0f172a;
+  --tbl-head:#f8fafc;--tbl-hover:#fafafa;--tbl-border:#f8fafc;
+  --nav-bg:#ffffff;--nav-border:#e2e8f0;--nav-active:#2563eb;
+}
+[data-theme="dark"]{
+  --ink:#f1f5f9;--muted:#94a3b8;--subtle:#64748b;
+  --border:#1e293b;--surface:#0f172a;--white:#1e293b;--bg:#0a0f1e;
+  --card-bg:#111827;--card-border:#1e293b;
+  --brand-light:#1e3a8a;--brand-ring:rgba(37,99,235,.25);
+  --green-light:#052e16;--amber-light:#1c1007;--purple-light:#1e1b4b;
+  --inp-bg:#0f172a;--inp-border:#1e293b;--inp-color:#f1f5f9;
+  --tbl-head:#0f172a;--tbl-hover:#111827;--tbl-border:#111827;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.5);
+  --nav-bg:#111827;--nav-border:#1e293b;--nav-active:#3b82f6;
+}
+body{background:var(--bg);color:var(--ink)}
+
+/* ── LAYOUT ── */
+.app{min-height:100vh;min-height:-webkit-fill-available;padding-bottom:calc(130px + env(safe-area-inset-bottom,0));padding-top:0}
+.container{width:100%;max-width:1380px;margin:0 auto;padding:0 16px}
+@media(min-width:768px){.container{padding:0 24px}}
+
+/* ── HEADER ── */
+.header{background:linear-gradient(135deg,#0a0f1e 0%,#0d1b40 60%,#0a2647 100%);padding:calc(20px + env(safe-area-inset-top,0)) 0 22px;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 15% 60%,rgba(37,99,235,.18) 0%,transparent 65%),radial-gradient(ellipse at 85% 20%,rgba(5,150,105,.1) 0%,transparent 55%)}
+.header-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:26px 26px}
+.header-inner{position:relative;z-index:1}
+.header-top{display:flex;flex-direction:column;gap:16px}
+@media(min-width:768px){.header-top{flex-direction:row;align-items:center;justify-content:space-between}}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{width:44px;height:44px;background:rgba(37,99,235,.2);border:1px solid rgba(59,130,246,.3);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#60a5fa;flex-shrink:0}
+.brand-sub{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.35);margin-bottom:3px}
+.brand-title{font-size:clamp(.95rem,5vw,1.6rem);font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1}
+.brand-status{display:flex;align-items:center;gap:7px;margin-top:5px}
+.dot-live{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.35)}}
+.brand-status span{font-size:.65rem;color:rgba(255,255,255,.4);font-weight:600}
+.header-right{display:flex;flex-direction:column;gap:10px}
+@media(min-width:768px){.header-right{flex-direction:row;align-items:center}}
+.header-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(min-width:768px){.header-stats{display:flex;gap:10px}}
+.hstat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;text-align:center;backdrop-filter:blur(6px)}
+.hstat-label{font-size:.52rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:3px}
+.hstat-val{font-size:clamp(.72rem,.9rem + .2vw,.95rem);font-weight:900;word-break:break-all}
+.header-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* ── DARK MODE TOGGLE ── */
+.dm-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 12px;cursor:pointer;color:#fff;font-family:inherit;font-size:.7rem;font-weight:700;display:flex;align-items:center;gap:6px;transition:all .2s}
+.dm-btn:hover{background:rgba(255,255,255,.14)}
+
+/* ════════════════════════
+   TOP NAVIGATION BAR
+════════════════════════ */
+.top-nav{
+  background:var(--nav-bg);
+  border-bottom:1px solid var(--nav-border);
+  position:sticky;top:0;z-index:90;
+  box-shadow:0 1px 8px rgba(0,0,0,.06);
+}
+.top-nav-inner{
+  max-width:1380px;margin:0 auto;
+  padding:0 10px;
+  display:flex;align-items:center;gap:6px;
+  height:48px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.top-nav-inner::-webkit-scrollbar{display:none}
+@media(min-width:768px){.top-nav-inner{padding:0 24px}}
+
+.tn-search{position:relative;flex:1;min-width:180px;max-width:320px}
+.tn-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--subtle);pointer-events:none}
+.tn-inp{width:100%;padding:7px 32px 7px 32px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-weight:600;font-size:.8rem;color:var(--inp-color);outline:none;transition:border-color .15s,box-shadow .15s}
+.tn-inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-ring)}
+.tn-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--subtle);cursor:pointer;display:flex;padding:2px}
+.tn-clear:hover{color:var(--rose)}
+.tn-div{width:1px;height:24px;background:var(--border);flex-shrink:0}
+.tn-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.72rem;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.tn-pill:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+.tn-pill.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tn-pill .pill-x{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.25);display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;margin-left:2px}
+.tn-select{padding:6px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:.72rem;font-weight:700;color:var(--muted);cursor:pointer;outline:none;flex-shrink:0;transition:border-color .15s;-webkit-appearance:none;-moz-appearance:none;appearance:none}
+.tn-select:focus{border-color:var(--brand)}
+.tn-date-wrap{position:relative;flex-shrink:0}
+.tn-date-wrap input[type=date]{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2;width:100%}
+
+/* ════════════════════════
+   BOTTOM TAB NAV
+════════════════════════ */
+.bottom-nav{
+  position:fixed;bottom:56px;left:0;right:0;z-index:95;
+  background:var(--nav-bg);
+  border-top:1px solid var(--nav-border);
+  box-shadow:0 -4px 20px rgba(0,0,0,.08);
+  padding-bottom:env(safe-area-inset-bottom,0);
+  -webkit-transform:translateZ(0);transform:translateZ(0);
+  will-change:transform;
+}
+.bottom-nav-inner{max-width:1380px;margin:0 auto;display:flex;}
+.bnav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:7px 2px 8px;min-width:0;overflow:hidden;
+  border:none;background:transparent;cursor:pointer;
+  font-family:inherit;transition:all .18s;
+  color:var(--subtle);border-top:2px solid transparent;
+  position:relative;
+}
+.bnav-item.active{color:var(--brand);border-top-color:var(--brand)}
+.bnav-item:hover:not(.active){color:var(--muted);background:var(--surface)}
+.bnav-label{font-size:.52rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bnav-badge{position:absolute;top:8px;right:calc(50% - 22px);background:var(--brand);color:#fff;font-size:.5rem;font-weight:900;min-width:16px;height:16px;border-radius:100px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+@media(max-width:360px){
+  .bnav-label{font-size:.44rem;letter-spacing:.01em}
+  .bnav-item{padding:8px 1px 9px;gap:2px}
+}
+@media(min-width:640px){
+  .bottom-nav{bottom:56px}
+  .bnav-label{font-size:.65rem}
+}
+
+/* ── CARD ── */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.card-title{display:flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.card-body{padding:18px}
+@media(min-width:768px){.card-body{padding:24px}}
+
+/* ═══════════════════════════════
+   MOBILE RESPONSIF KOMPREHENSIF
+═══════════════════════════════ */
+@media(max-width:480px){
+  /* Container & spacing */
+  .container{padding:0 10px}
+  .card{border-radius:12px}
+  .card-body{padding:12px}
+  .card-head{padding:10px 12px}
+
+  /* Header lebih compact */
+  .header{padding:calc(14px + env(safe-area-inset-top,0)) 0 14px}
+  .brand-icon{width:36px;height:36px;border-radius:10px}
+  .brand-title{font-size:1.1rem}
+  .brand-sub{font-size:.5rem;letter-spacing:.12em}
+  .brand-status span{font-size:.55rem}
+  .hstat{padding:7px 10px}
+  .hstat-label{font-size:.44rem;letter-spacing:.07em}
+  .hstat-val{font-size:.8rem}
+  .header-stats{gap:5px}
+  .header-actions{gap:5px}
+  .dm-btn{padding:5px 9px;font-size:.62rem;gap:4px}
+
+  /* Top nav filter compact */
+  .top-nav-inner{height:46px;gap:6px;padding:0 10px}
+  .tn-pill{padding:5px 9px;font-size:.65rem}
+  .tn-inp{font-size:.72rem;padding:5px 28px 5px 28px}
+
+  /* Form grid full-width di mobile */
+  .fg-2,.fg-3,.fg-4{grid-template-columns:1fr !important}
+
+  /* Calc bar vertikal di mobile */
+  .calc-bar{flex-direction:column;gap:10px;align-items:stretch}
+  .calc-amount{font-size:1.4rem}
+  .dur-pill{align-self:flex-start}
+
+  /* Log items compact */
+  .log-item-header{font-size:.7rem}
+  .badge{font-size:.5rem;padding:2px 6px}
+
+  /* Pegawai cards 1 kolom */
+  .peg-cards{grid-template-columns:1fr !important}
+
+  /* Modal full-width */
+  .modal{margin:10px;max-width:calc(100vw - 20px) !important;padding:16px !important}
+
+  /* App padding untuk 5 tab + footer */
+  .app{padding-bottom:calc(125px + env(safe-area-inset-bottom,0))}
+
+  /* Autocomplete dropdown */
+  .ac-list{max-height:200px}
+}
+
+@media(max-width:360px){
+  .container{padding:0 8px}
+  .brand-title{font-size:1rem}
+  .header-stats{grid-template-columns:repeat(3,1fr)}
+  .hstat-val{font-size:.72rem}
+  .modal{margin:6px;max-width:calc(100vw - 12px) !important}
+}
+
+@media(min-width:481px) and (max-width:767px){
+  .fg-2{grid-template-columns:1fr 1fr}
+  .fg-3{grid-template-columns:1fr 1fr}
+  .peg-cards{grid-template-columns:repeat(2,1fr)}
+  .modal{max-width:480px}
+}
+
+/* ── FORM GRID ── */
+.fg-row{display:grid;gap:12px;margin-bottom:14px}
+.fg-2{grid-template-columns:1fr}
+.fg-3{grid-template-columns:1fr}
+.fg-4{grid-template-columns:1fr 1fr}
+@media(min-width:540px){.fg-2{grid-template-columns:1fr 1fr}.fg-3{grid-template-columns:1fr 1fr}}
+@media(min-width:768px){.fg-2{grid-template-columns:2fr 1fr 1fr}.fg-3{grid-template-columns:1fr 1fr 1fr 1fr auto}.fg-4{grid-template-columns:1fr 1fr 1fr 1fr 1fr}}
+
+/* ── INPUTS ── */
+.lbl{display:block;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px}
+.inp{width:100%;padding:10px 13px;background:var(--inp-bg);border:1.5px solid var(--inp-border);border-radius:10px;font-family:inherit;font-weight:700;font-size:1rem;color:var(--inp-color);outline:none;transition:border-color .15s,box-shadow .15s,background .15s;-webkit-appearance:none}
+.inp:focus{border-color:var(--brand);background:var(--white);box-shadow:0 0 0 3px var(--brand-ring)}
+.inp::placeholder{color:var(--subtle);font-weight:500}
+.inp-num{font-size:1.2rem;font-weight:900;text-align:center;letter-spacing:-.02em;padding:11px 8px;-webkit-appearance:none}
+.inp-green{color:#047857;background:#f0fdf4;border-color:#a7f3d0}
+[data-theme="dark"] .inp-green{color:#34d399;background:#052e16;border-color:#065f46}
+.inp-green:focus{border-color:var(--green)}
+.inp-blue{color:#1d4ed8;background:#eff6ff;border-color:#bfdbfe}
+[data-theme="dark"] .inp-blue{color:#93c5fd;background:#1e3a8a;border-color:#1d4ed8}
+.inp-blue:focus{border-color:var(--brand)}
+.inp-amber{color:#b45309;background:#fffbeb;border-color:#fde68a}
+[data-theme="dark"] .inp-amber{color:#fbbf24;background:#1c1007;border-color:#92400e}
+.inp-amber:focus{border-color:var(--amber)}
+.inp-purple{color:#6d28d9;background:#f5f3ff;border-color:#ddd6fe}
+[data-theme="dark"] .inp-purple{color:#c4b5fd;background:#1e1b4b;border-color:#4c1d95}
+.inp-purple:focus{border-color:var(--purple)}
+
+/* ─── TDS input style ─── */
+.inp-tds{color:#b45309;background:#fffbeb;border-color:#fde68a}
+
+/* ════════════════════════
+   SLIP GAJI MODAL
+════════════════════════ */
+.slip-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:12px;overscroll-behavior:contain}
+.slip-modal{background:#fff;border-radius:18px;width:100%;max-width:440px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative}
+@media(max-width:480px){.slip-modal{max-height:95vh;border-radius:14px 14px 0 0;align-self:flex-end;max-width:100%;width:100%;padding-bottom:env(safe-area-inset-bottom,0)}}
+.slip-header{background:linear-gradient(135deg,#0a0f1e 0%,#0d1b40 60%,#0a2647 100%);padding:22px 22px 18px;border-radius:18px 18px 0 0;position:relative;overflow:hidden}
+@media(max-width:480px){.slip-header{border-radius:14px 14px 0 0}}
+.slip-header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(37,99,235,.2),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(5,150,105,.12),transparent 50%)}
+.slip-header-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:22px 22px}
+.slip-header-inner{position:relative;z-index:1}
+.slip-company{font-size:.56rem;font-weight:900;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.35);margin-bottom:4px}
+.slip-title-main{font-size:1.2rem;font-weight:900;color:#fff;letter-spacing:-.03em;margin-bottom:2px}
+.slip-subtitle{font-size:.65rem;color:rgba(255,255,255,.45);font-weight:600;margin-bottom:14px}
+.slip-employee-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px}
+.slip-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#059669);display:flex;align-items:center;justify-content:center;font-size:.95rem;font-weight:900;color:#fff;flex-shrink:0}
+.slip-emp-name{font-size:.95rem;font-weight:900;color:#fff;line-height:1.1}
+.slip-emp-meta{font-size:.6rem;color:rgba(255,255,255,.5);font-weight:600;margin-top:2px}
+.slip-body{padding:18px 20px}
+.slip-period-bar{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.slip-period-label{font-size:.55rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8}
+.slip-period-val{font-size:.8rem;font-weight:800;color:#0f172a}
+.slip-section-title{font-size:.56rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:8px;margin-top:14px;padding-bottom:5px;border-bottom:1px solid #e2e8f0}
+.slip-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9}
+.slip-row:last-child{border-bottom:none}
+.slip-row-label{font-size:.78rem;font-weight:600;color:#475569}
+.slip-row-val{font-size:.82rem;font-weight:800;color:#0f172a}
+.slip-row-val.green{color:#059669}
+.slip-row-val.blue{color:#2563eb}
+.slip-batch-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 13px;margin-bottom:8px}
+.slip-batch-name{font-size:.82rem;font-weight:800;color:#0f172a;margin-bottom:3px}
+.slip-batch-meta{font-size:.62rem;color:#64748b;font-weight:600;margin-bottom:6px}
+.slip-batch-amounts{display:flex;gap:6px;flex-wrap:wrap}
+.slip-batch-amt{background:#fff;border:1px solid #e2e8f0;border-radius:7px;padding:4px 9px;font-size:.66rem;font-weight:800}
+.slip-total-box{background:linear-gradient(135deg,#0a0f1e,#0d1b40);border-radius:12px;padding:16px 18px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.slip-total-label{font-size:.56rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.45)}
+.slip-total-amount{font-size:clamp(1.1rem,4vw,1.6rem);font-weight:900;color:#fbbf24;letter-spacing:-.03em;word-break:break-all}
+.slip-footer-note{font-size:.62rem;color:#94a3b8;text-align:center;margin-top:14px;padding-top:12px;border-top:1px dashed #e2e8f0;line-height:1.6}
+.slip-actions{display:flex;gap:8px;padding:16px 20px;border-top:1px solid #e2e8f0;position:sticky;bottom:0;background:#fff}
+.slip-close-btn{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.12);border:none;border-radius:9px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7);z-index:2}
+.slip-close-btn:hover{background:rgba(255,255,255,.2)}
+
+/* Tombol slip gaji di kartu pegawai */
+.slip-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:8px;font-family:inherit;font-weight:800;font-size:.62rem;cursor:pointer;white-space:nowrap;transition:all .15s;margin-top:9px;width:100%}
+.slip-btn:hover{background:linear-gradient(135deg,#1e40af,#1d4ed8);transform:translateY(-1px)}
+.slip-btn:active{transform:translateY(0)}
+[data-theme="dark"] .inp-tds{color:#fbbf24;background:#1c1007;border-color:#92400e}
+.inp-tds:focus{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.2)}
+
+/* Autocomplete */
+.ac-wrap{position:relative}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1.5px solid var(--brand);border-top:none;border-radius:0 0 10px 10px;z-index:50;max-height:160px;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.ac-item{padding:9px 14px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--ink);transition:background .1s;display:flex;align-items:center;gap:8px}
+.ac-item:hover{background:var(--brand-light);color:var(--brand)}
+.ac-item em{font-style:normal;color:var(--brand);font-weight:800}
+
+/* Template */
+.tpl-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tpl-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--brand-light);border:1px solid rgba(37,99,235,.2);border-radius:8px;font-size:.66rem;font-weight:700;color:var(--brand);cursor:pointer;transition:all .15s;white-space:nowrap}
+.tpl-chip:hover{background:var(--brand);color:#fff}
+.tpl-chip-del{width:13px;height:13px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(37,99,235,.2);font-size:.55rem}
+.tpl-chip:hover .tpl-chip-del{background:rgba(255,255,255,.3)}
+
+/* Duration pill */
+.dur-pill{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:10px 14px;min-width:84px;text-align:center}
+[data-theme="dark"] .dur-pill{background:#0c2544;border-color:#1d4ed8}
+.dur-label{font-size:.52rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#0284c7;margin-bottom:2px}
+.dur-val{font-size:1.25rem;font-weight:900;color:#0369a1;line-height:1}
+[data-theme="dark"] .dur-val{color:#60a5fa}
+.dur-unit{font-size:.58rem;color:#0284c7;font-weight:700;margin-left:2px}
+
+/* Pegawai grid */
+.pegawai-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:540px){.pegawai-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.pegawai-grid{grid-template-columns:repeat(4,1fr)}}
+.peg-wrap{position:relative}
+.peg-num{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:.58rem;font-weight:900;color:var(--subtle);background:var(--border);border-radius:4px;padding:1px 4px;pointer-events:none;z-index:1}
+.peg-inp{padding-left:32px!important;font-size:.8rem!important}
+
+/* ── CALC BAR ── */
+.calc-bar{background:linear-gradient(135deg,#0a0f1e,#0d1b40);border-radius:var(--radius-lg);padding:16px 18px;display:flex;flex-direction:column;gap:14px;margin-top:4px}
+@media(min-width:640px){.calc-bar{flex-direction:row;align-items:center;justify-content:space-between}}
+.calc-est{color:rgba(255,255,255,.4);font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.calc-amount{font-size:clamp(1rem,4vw,1.8rem);font-weight:900;color:#fb923c;letter-spacing:-.03em;word-break:break-all}
+.calc-breakdown{display:flex;gap:12px;margin-top:3px;flex-wrap:wrap}
+.calc-item{font-size:.63rem;color:rgba(255,255,255,.4)}
+.calc-item strong{font-weight:800}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:10px;font-family:inherit;font-weight:800;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:all .15s;padding:10px 18px;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--brand);color:#fff;padding:12px 24px;font-size:.8rem}
+.btn-primary:hover{background:var(--brand-dark);box-shadow:0 4px 16px rgba(37,99,235,.35)}
+.btn-primary:disabled{opacity:.6;pointer-events:none}
+.btn-sm{padding:7px 12px;font-size:.68rem}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+.btn-ghost:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-light)}
+.btn-excel{background:#166534;color:#fff}
+.btn-excel:hover{background:#14532d;box-shadow:0 4px 14px rgba(22,101,52,.35)}
+.btn-gsheet{background:#1558d6;color:#fff}
+.btn-gsheet:hover{background:#1148c2;box-shadow:0 4px 14px rgba(21,88,214,.35)}
+.btn-danger{background:#fff1f2;color:var(--rose);border:1.5px solid #fecdd3}
+[data-theme="dark"] .btn-danger{background:rgba(225,29,72,.1);border-color:rgba(225,29,72,.3)}
+.btn-danger:hover{background:var(--rose);color:#fff;border-color:var(--rose)}
+.btn-full{width:100%}
+.btn-json{background:#7c3aed;color:#fff}
+.btn-json:hover{background:#6d28d9;box-shadow:0 4px 14px rgba(124,58,237,.35)}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:580px}
+thead tr{background:var(--tbl-head);border-bottom:1px solid var(--border)}
+th{padding:11px 14px;font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--subtle);text-align:left;white-space:nowrap}
+td{padding:13px 14px;vertical-align:top;color:var(--ink)}
+tbody tr{border-bottom:1px solid var(--tbl-border);cursor:pointer;transition:background .1s}
+tbody tr:hover{background:var(--tbl-hover)}
+tbody tr.expanded{background:var(--brand-light)}
+.expand-row td{padding:0}
+.expand-inner{padding:12px 16px;background:var(--surface);border-bottom:2px solid rgba(37,99,235,.2)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:100px;font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+[data-theme="dark"] .badge-blue{background:#1e3a8a;color:#93c5fd}
+.badge-green{background:#d1fae5;color:#065f46}
+[data-theme="dark"] .badge-green{background:#052e16;color:#34d399}
+.badge-slate{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.badge-amber{background:#fef3c7;color:#92400e}
+[data-theme="dark"] .badge-amber{background:#1c1007;color:#fbbf24}
+.badge-hit{background:var(--brand);color:#fff}
+
+/* ── PEGAWAI CARDS ── */
+.peg-cards{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:480px){.peg-cards{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.peg-cards{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1200px){.peg-cards{grid-template-columns:repeat(4,1fr)}}
+.peg-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #1e2d4a;border-radius:14px;padding:14px;transition:all .2s}
+.peg-card:hover{border-color:#2563eb;transform:translateY(-1px)}
+.peg-card.active{background:linear-gradient(135deg,#1d4ed8,#1e3a8a);border-color:#3b82f6}
+.peg-name{font-weight:900;font-size:.85rem;color:#f1f5f9;text-transform:uppercase;margin-bottom:2px;word-break:break-all}
+.peg-meta{font-size:.58rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em}
+.peg-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.peg-stat{background:rgba(255,255,255,.04);border-radius:8px;padding:7px 9px;border:1px solid rgba(255,255,255,.05)}
+.peg-card.active .peg-stat{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15)}
+.peg-stat-lbl{font-size:.5rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.peg-stat-val{font-size:.78rem;font-weight:900}
+.progress{height:4px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden;margin:9px 0 7px}
+.progress-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#2563eb,#60a5fa);transition:width .5s ease}
+.peg-total-row{display:flex;justify-content:space-between;align-items:center;padding-top:7px;border-top:1px solid rgba(255,255,255,.05)}
+.peg-total-lbl{font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#475569}
+.peg-total-val{font-size:1.1rem;font-weight:900;color:#fb923c}
+
+/* ── TOP EARNER ── */
+.top-banner{background:linear-gradient(135deg,#78350f,#92400e);border:1px solid #b45309;border-radius:14px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top-crown{color:#fbbf24;text-align:center;font-size:.52rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
+.top-info{flex:1;min-width:0}
+.top-name{font-weight:900;font-size:.95rem;color:#fff;text-transform:uppercase;word-break:break-all}
+.top-sub{font-size:.65rem;color:rgba(255,255,255,.55);font-weight:600;margin-top:2px}
+.top-amount{text-align:right;flex-shrink:0}
+.top-amount-lbl{font-size:.52rem;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px}
+.top-amount-val{font-size:1.3rem;font-weight:900;color:#fbbf24}
+
+/* ── CHART ── */
+.chart-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:16px}
+@media(min-width:768px){.chart-grid{grid-template-columns:1fr 1fr}}
+.chart-box{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow)}
+.chart-title{font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.chart-wrap{position:relative;height:190px}
+@media(min-width:768px){.chart-wrap{height:210px}}
+
+/* ── MODALS ── */
+.overlay{position:fixed;inset:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card-bg);border-radius:var(--radius-xl);padding:28px;width:100%;max-width:380px;box-shadow:0 25px 50px rgba(0,0,0,.35);animation:modalIn .22s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.modal-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.modal-icon.success{background:#d1fae5;color:#059669}
+.modal-icon.danger{background:#fff1f2;color:var(--rose)}
+.modal h2{font-size:1.25rem;font-weight:900;text-align:center;margin-bottom:5px;color:var(--ink)}
+.modal p{color:var(--muted);text-align:center;font-size:.85rem;margin-bottom:18px}
+.modal-result{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 16px;margin-bottom:20px;text-align:center}
+.modal-result-lbl{font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--subtle);margin-bottom:3px}
+.modal-result-val{font-size:1.5rem;font-weight:900;color:var(--brand)}
+.modal-btns{display:flex;gap:10px}
+
+/* ── GSHEET MODAL ── */
+.gsheet-modal{max-width:500px;padding:22px 26px}
+.gs-status{padding:9px 14px;border-radius:10px;font-size:.76rem;font-weight:700;text-align:center}
+.gs-status.connected{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+[data-theme="dark"] .gs-status.connected{background:#052e16;border-color:#065f46}
+.gs-status.pending{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+[data-theme="dark"] .gs-status.pending{background:#1c1007;border-color:#92400e}
+.gs-status.error{background:#fff1f2;color:var(--rose);border:1px solid #fecdd3}
+[data-theme="dark"] .gs-status.error{background:rgba(225,29,72,.1);border-color:rgba(225,29,72,.3)}
+
+/* ── BACKUP MODAL ── */
+.backup-modal{max-width:420px}
+.backup-info{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.backup-info-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.backup-info-row:last-child{margin-bottom:0}
+.backup-info-label{font-size:.66rem;font-weight:700;color:var(--muted)}
+.backup-info-val{font-size:.76rem;font-weight:800;color:var(--ink)}
+
+/* ── FOOTER BAR ── */
+.footer-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;-webkit-transform:translateZ(0);transform:translateZ(0);will-change:transform;background:linear-gradient(135deg,#0a0f1e,#0d1b40);border-top:1px solid rgba(255,255,255,.06);padding:6px 16px;padding-bottom:env(safe-area-inset-bottom,0)}
+.footer-inner{max-width:1380px;margin:0 auto;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.footer-stats{display:flex;gap:14px;flex-wrap:nowrap;overflow:hidden}
+.fstat{text-align:left;flex-shrink:0}
+.fstat-lbl{font-size:.48rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);margin-bottom:0}
+.fstat-val{font-size:.82rem;font-weight:900}
+.footer-btns{display:flex;gap:6px;flex-shrink:0}
+@media(max-width:480px){.footer-stats{display:none}}
+
+/* ── EXPAND ── */
+.exp-grid{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:640px){.exp-grid{grid-template-columns:repeat(3,1fr)}}
+.exp-box{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:11px}
+.exp-lbl{font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--subtle);margin-bottom:6px}
+.exp-row{font-size:.78rem;font-weight:600;margin-bottom:3px;color:var(--ink)}
+.exp-row span{color:var(--subtle);font-weight:500}
+
+/* ── NOTIF ── */
+.notif{position:fixed;top:16px;right:16px;z-index:999;display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;color:#fff;font-size:.76rem;font-weight:700;box-shadow:var(--shadow-lg);animation:notifIn .22s ease;max-width:320px}
+@keyframes notifIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.notif.success{background:#059669}.notif.error{background:#e11d48}.notif.info{background:#1d4ed8}
+.notif-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;display:flex;padding:2px;margin-left:4px}
+
+/* ── EMPTY ── */
+.empty{padding:48px 24px;text-align:center;color:var(--subtle);font-style:italic;font-weight:600;font-size:.86rem}
+.text-right{text-align:right}
+
+/* Section heading */
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+
+/* readonly style */
+.inp-readonly{opacity:.75;cursor:not-allowed;background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.03) 4px,rgba(0,0,0,.03) 8px)!important}
+[data-theme="dark"] .inp-readonly{background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.03) 4px,rgba(255,255,255,.03) 8px)!important}
+
+/* iOS scroll lock when modal open */
+body.modal-open{overflow:hidden;position:fixed;width:100%}
+/* Fix for iOS input date/time */
+input[type="date"],input[type="time"]{-webkit-appearance:none;appearance:none;background:var(--inp-bg);color:var(--inp-color)}
+/* Fix select font on iOS */
+select{font-size:1rem;-webkit-appearance:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+/* ─── ICONS ─── */
+const Ic = ({ n, s=18 }) => {
+  const M = {
+    calc:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+    save:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+    search:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+    trash:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+    users:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    check:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>,
+    x:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+    list:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M15 8h-5"/><path d="M15 12h-5"/></svg>,
+    box:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 9.4 7.5 4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>,
+    clock:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    dl:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+    ul:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+    sheet:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>,
+    spin:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
+    award:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>,
+    copy:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>,
+    link:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+    plus:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+    chart:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>,
+    tpl:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+    backup:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+    moon:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+    sun:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+    sync:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>,
+    filter:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+    sort:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>,
+    input:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+    tag:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>,
+    edit:<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  };
+  return <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{M[n]||null}</span>;
+};
+
+/* ─── HELPERS ─── */
+const fRp = v => 'Rp ' + (v||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+const toF = v => parseFloat((v||'0').replace(',','.')) || 0;
+const cleanN = v => { let s=v.replace(/[^0-9.,]/g,'').replace(/\./g,','); const p=s.split(','); return p.length>2?p[0]+','+p.slice(1).join(''):s; };
+const GS_SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+const SHEET_TITLE = 'Upah Borongan — Claude';
+
+/* ─── KATALOG PRODUK 2025 (data awal / default) ─── */
+const KATALOG_DEFAULT = [
+  { nama: 'Acarbose 100 mg',                    harga: 314.56 },
+  { nama: 'Acarbose 50 mg',                     harga: 268.71 },
+  { nama: 'Ambroxol HCl 30 mg',                 harga: 143.48 },
+  { nama: 'Amlodipine Besilate 10 mg',           harga: 328.22 },
+  { nama: 'Amlodipine Besilate 5 mg',            harga: 328.22 },
+  { nama: 'Antasida Doen',                       harga: 245.56 },
+  { nama: 'Asam Tranexamat',                     harga: 385.08 },
+  { nama: 'Atorvastatin 20 Mg',                  harga: 204.87 },
+  { nama: 'Bisoprolol Fumarate 2,5 Mg',          harga: 143.48 },
+  { nama: 'Bisoprolol Fumarate 5 Mg',            harga: 143.48 },
+  { nama: 'Calcium Lactate',                     harga: 245.56 },
+  { nama: 'Captopril 25 mg',                     harga: 314.56 },
+  { nama: 'Clonidine 0,15 mg',                   harga: 143.48 },
+  { nama: 'Clopidogrel Bisulphate 75 mg',        harga: 170.66 },
+  { nama: 'Dexamethasone 0,5 Mg',                harga: 143.48 },
+  { nama: 'Dimenhydrinate 50 Mg',                harga: 1419.99 },
+  { nama: 'FDC 2',                               harga: 498.73 },
+  { nama: 'Furosemide 40 mg',                    harga: 314.56 },
+  { nama: 'Hydrochlorothiazide 25 Mg',           harga: 143.48 },
+  { nama: 'Isoniazide 300 mg',                   harga: 388.21 },
+  { nama: 'Levofloxacin Hemi 500 Mg',            harga: 245.56 },
+  { nama: 'Magasida',                            harga: 327.19 },
+  { nama: 'Moxifloxacin 400 Mg',                 harga: 428.24 },
+  { nama: 'Nitrokaf Retard',                     harga: 152.83 },
+  { nama: 'Nitrokaf Retard Forte',               harga: 145.81 },
+  { nama: 'Nitrokaf Retard (Kemas Manual)',       harga: 656.39 },
+  { nama: 'Nitrokaf Retard Forte (Kemas Manual)', harga: 656.39 },
+  { nama: 'Pantokaf 40 Mg',                      harga: 314.56 },
+  { nama: 'Paracetamol 500 mg',                  harga: 245.56 },
+  { nama: 'Phenobarbital 30 mg',                 harga: 138.86 },
+  { nama: 'Retaphyl SR',                         harga: 549.32 },
+  { nama: 'Ripizol 10 Mg',                       harga: 151.16 },
+  { nama: 'Rosuvastatin 10 mg',                  harga: 431.66 },
+  { nama: 'Rosuvastatin 20 mg',                  harga: 431.66 },
+  { nama: 'Rovascol 10 mg',                      harga: 314.56 },
+  { nama: 'Salbutamol 2 mg',                     harga: 339.87 },
+  { nama: 'Salbutamol 4 mg',                     harga: 339.87 },
+  { nama: 'Sildenafil Citrate 100 Mg',           harga: 379.22 },
+  { nama: 'Simvastatin 10 Mg',                   harga: 328.22 },
+  { nama: 'Simvastatin 20 Mg',                   harga: 328.22 },
+  { nama: 'Tablet Tambah Darah Neo',             harga: 233.27 },
+  { nama: 'Tencard 2,5 Mg',                      harga: 143.48 },
+  { nama: 'Topgesic 500 Mg',                     harga: 428.24 },
+  { nama: 'Valsartan 160 mg',                    harga: 431.66 },
+  { nama: 'Valsartan 80',                        harga: 431.66 },
+  { nama: 'Vitamin B Complex',                   harga: 300.54 },
+  { nama: 'Vitamin B1 50 mg',                    harga: 143.48 },
+  { nama: 'Vitamin B12 50 mg',                   harga: 143.48 },
+  { nama: 'Vitamin B6 10 mg',                    harga: 143.48 },
+  { nama: 'Vitamin C 50 mg',                     harga: 300.54 },
+  { nama: 'Zinc Sulfate',                        harga: 385.08 },
+];
+const KATALOG_KEY = 'ubclaude_katalog_v1';
+
+/* ─── NOTIF ─── */
+const Notif = ({msg,type,onClose}) => {
+  useEffect(()=>{const t=setTimeout(onClose,4000);return()=>clearTimeout(t);},[]);
+  return <div className={`notif ${type}`}><Ic n={type==='success'?'check':type==='error'?'x':'sync'} s={14}/><span style={{flex:1}}>{msg}</span><button className="notif-close" onClick={onClose}><Ic n="x" s={12}/></button></div>;
+};
+const Spin = ({s=16}) => <span style={{display:'inline-flex',animation:'spin 1s linear infinite'}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><Ic n="spin" s={s}/></span>;
+
+/* ═══ AUTOCOMPLETE PRODUK INPUT ═══ */
+const ProdukInput = ({ value, onChange, onSelectProduk, katalog=[] }) => {
+  const [show, setShow] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const suggestions = useMemo(() => {
+    if (!value.trim()) return katalog.slice(0, 8);
+    const q = value.trim().toLowerCase();
+    return katalog.filter(p => p.nama.toLowerCase().includes(q)).slice(0, 8);
+  }, [value, katalog]);
+  useEffect(() => { setShow(focused && suggestions.length > 0); }, [focused, suggestions]);
+  const highlight = (nama) => {
+    if (!value.trim()) return nama;
+    const q = value.trim();
+    const i = nama.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return nama;
+    return <>{nama.slice(0,i)}<em style={{background:'#fef08a',color:'#78350f',fontStyle:'normal',borderRadius:2}}>{nama.slice(i,i+q.length)}</em>{nama.slice(i+q.length)}</>;
+  };
+  const handleSelect = (produk) => {
+    onSelectProduk(produk);
+    setShow(false);
+  };
+  return (
+    <div className="ac-wrap">
+      <input
+        className="inp"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        placeholder="Ketik nama produk atau pilih dari katalog..."
+        required
+        style={{fontWeight:700, fontSize:'.95rem'}}
+      />
+      {show && (
+        <div className="ac-list" style={{maxHeight:280, overflowY:'auto'}}>
+          {!value.trim() && <div style={{padding:'6px 12px 4px',fontSize:'.56rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'var(--subtle)'}}>Katalog Produk 2025</div>}
+          {suggestions.map((p, i) => (
+            <div key={i} className="ac-item" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}
+              onMouseDown={() => handleSelect(p)}>
+              <span style={{display:'flex',alignItems:'center',gap:6}}><Ic n="box" s={11}/> {highlight(p.nama)}</span>
+              <span style={{fontSize:'.65rem',fontWeight:800,color:'#059669',flexShrink:0,marginLeft:8}}>Rp {(typeof p.harga==='number'?p.harga:parseFloat(String(p.harga||0).replace(',','.'))||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+            </div>
+          ))}
+          {value.trim() && suggestions.length === 0 && (
+            <div style={{padding:'10px 12px',fontSize:'.72rem',color:'var(--subtle)',textAlign:'center'}}>Produk tidak ditemukan — isi manual</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ═══ AUTOCOMPLETE PEGAWAI INPUT ═══ */
+const PegawaiInput = ({ value, onChange, placeholder, allNames }) => {
+  const [show, setShow] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const suggestions = useMemo(() => {
+    if (!value.trim() || !allNames.length) return [];
+    const q = value.trim().toLowerCase();
+    return allNames.filter(n => n.toLowerCase().includes(q) && n.toLowerCase() !== q.toLowerCase()).slice(0, 6);
+  }, [value, allNames]);
+  useEffect(() => { setShow(focused && suggestions.length > 0); }, [focused, suggestions]);
+  const highlight = (name) => {
+    const q = value.trim();
+    const i = name.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return name;
+    return <>{name.slice(0,i)}<em>{name.slice(i,i+q.length)}</em>{name.slice(i+q.length)}</>;
+  };
+  return (
+    <div className="ac-wrap">
+      <input className="inp peg-inp" value={value} onChange={e=>onChange(e.target.value)}
+        onFocus={()=>setFocused(true)} onBlur={()=>setTimeout(()=>setFocused(false),150)}
+        placeholder={placeholder}/>
+      {show && (
+        <div className="ac-list">
+          {suggestions.map((n,i)=>(
+            <div key={i} className="ac-item" onMouseDown={()=>{onChange(n);setShow(false);}}>
+              <Ic n="users" s={11}/> {highlight(n)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ═══ CHART COMPONENTS ═══ */
+const ChartBar = ({ data, color }) => {
+  const ref = useRef(); const chartRef = useRef();
+  useEffect(() => {
+    if (!ref.current || !data.length) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
+    const textColor = isDark ? '#64748b' : '#94a3b8';
+    chartRef.current = new Chart(ref.current, {
+      type: 'bar',
+      data: { labels: data.map(d=>d.label), datasets: [{ data: data.map(d=>d.val), backgroundColor: color+'cc', borderColor: color, borderWidth: 1.5, borderRadius: 5 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Rp '+(ctx.raw||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}}},
+        scales:{ x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10,weight:'700'}}}, y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>'Rp'+Math.floor(v/1000)+'rb'}} } }
+    });
+    return () => chartRef.current?.destroy();
+  }, [data, color]);
+  return <canvas ref={ref}/>;
+};
+
+const ChartDoughnut = ({ data }) => {
+  const ref = useRef(); const chartRef = useRef();
+  useEffect(() => {
+    if (!ref.current || !data.length) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const COLORS = ['#2563eb','#059669','#f59e0b','#e11d48','#7c3aed','#0891b2','#65a30d','#db2777'];
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    chartRef.current = new Chart(ref.current, {
+      type: 'doughnut',
+      data: { labels: data.map(d=>d.label), datasets: [{ data: data.map(d=>d.val), backgroundColor: COLORS.slice(0,data.length), borderWidth: 2, borderColor: isDark?'#111827':'#ffffff' }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{ position:'right', labels:{color:isDark?'#94a3b8':'#475569',font:{size:11,weight:'700'},boxWidth:10,padding:8} }, tooltip:{callbacks:{label:ctx=>ctx.label+': Rp '+(ctx.raw||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}} } }
+    });
+    return () => chartRef.current?.destroy();
+  }, [data]);
+  return <canvas ref={ref}/>;
+};
+
+/* ═══ BACKUP MODAL ═══ */
+const BackupModal = ({ history, onImport, onClose, toast, initialTab='export' }) => {
+  const [tab, setTab] = useState(initialTab);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef();
+
+  const doExport = () => {
+    const payload = { _app:'upah-borongan-claude', _ver:3, _exported: new Date().toISOString(), history,
+      _gs:{ sheetId:localStorage.getItem('gs_sheet_id')||'', sheetUrl:localStorage.getItem('gs_sheet_url')||'', clientId:localStorage.getItem('gs_client_id')||'' } };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `upah-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+    toast(`Backup berhasil! (${history.length} batch)`, 'success');
+  };
+
+  const doImport = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        const rows = data.history || (Array.isArray(data) ? data : null);
+        if (!rows) { toast('Format file tidak valid!', 'error'); return; }
+        onImport(rows);
+        if (data._gs) {
+          if (data._gs.sheetId) localStorage.setItem('gs_sheet_id', data._gs.sheetId);
+          if (data._gs.sheetUrl) localStorage.setItem('gs_sheet_url', data._gs.sheetUrl);
+          if (data._gs.clientId) localStorage.setItem('gs_client_id', data._gs.clientId);
+        }
+        toast(`✓ ${rows.length} batch diimport!`, 'success'); onClose();
+      } catch { toast('File rusak atau bukan JSON yang valid.', 'error'); }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="modal backup-modal">
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+          <div style={{width:38,height:38,background:'#f5f3ff',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#7c3aed',flexShrink:0}}><Ic n="backup" s={18}/></div>
+          <div><h2 style={{fontSize:.95+'rem',fontWeight:900,margin:0,textAlign:'left'}}>Backup & Restore</h2>
+            <p style={{fontSize:'.65rem',color:'#64748b',margin:0,textAlign:'left'}}>Export/Import data JSON</p></div>
+          <button className="btn btn-ghost btn-sm" style={{marginLeft:'auto',padding:'5px',borderRadius:8}} onClick={onClose}><Ic n="x" s={15}/></button>
+        </div>
+        <div style={{display:'flex',background:'var(--surface)',borderRadius:10,padding:3,gap:2,marginBottom:14}}>
+          {['export','import'].map(t=><button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'7px',borderRadius:8,border:'none',fontFamily:'inherit',fontWeight:800,fontSize:'.7rem',textTransform:'uppercase',letterSpacing:'.06em',cursor:'pointer',transition:'all .15s',background:tab===t?'var(--brand)':'transparent',color:tab===t?'#fff':'var(--muted)'}}>{t==='export'?'📤 Export':'📥 Import'}</button>)}
+        </div>
+        {tab==='export' && (
+          <div>
+            <div className="backup-info">
+              {[['Total Batch',history.length+' batch'],['Format','JSON (.json)'],['Tanggal',new Date().toLocaleDateString('id-ID')]].map(([l,v],i)=>(
+                <div key={i} className="backup-info-row"><span className="backup-info-label">{l}</span><span className="backup-info-val">{v}</span></div>
+              ))}
+            </div>
+            <button className="btn btn-json btn-full" onClick={doExport}><Ic n="dl" s={14}/> Download Backup JSON</button>
+          </div>
+        )}
+        {tab==='import' && (
+          <div>
+            <div style={{background:'#fefce8',border:'1px solid #fde68a',borderRadius:10,padding:'9px 12px',marginBottom:12}}>
+              <p style={{fontSize:'.76rem',color:'#92400e',margin:0}}>⚠️ Import akan <strong>menambahkan</strong> data tanpa menghapus data lama.</p>
+            </div>
+            <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)}
+              onDrop={e=>{e.preventDefault();setDragOver(false);doImport(e.dataTransfer.files[0]);}}
+              onClick={()=>fileRef.current.click()}
+              style={{border:`2px dashed ${dragOver?'#7c3aed':'#ddd6fe'}`,background:dragOver?'#f5f3ff':'var(--surface)',borderRadius:12,padding:'24px 20px',textAlign:'center',cursor:'pointer',transition:'all .2s',marginBottom:12}}>
+              <div style={{fontSize:'1.8rem',marginBottom:6}}>📂</div>
+              <div style={{fontSize:'.8rem',fontWeight:700,color:'#7c3aed',marginBottom:3}}>Klik atau drag file JSON</div>
+              <div style={{fontSize:'.66rem',color:'var(--muted)'}}>upah-backup-*.json</div>
+              <input ref={fileRef} type="file" accept=".json" style={{display:'none'}} onChange={e=>doImport(e.target.files[0])}/>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ═══ GSHEET MODAL ═══ */
+const GSheetModal = ({ history, akumulasi, onClose, showNotif }) => {
+  const [clientId, setClientId] = useState(()=>localStorage.getItem('gs_client_id')||'');
+  const [spreadsheetId, setSpreadsheetId] = useState(()=>localStorage.getItem('gs_sheet_id')||'');
+  const [status, setStatus] = useState('idle');
+  const [errMsg, setErrMsg] = useState('');
+  const [sheetUrl, setSheetUrl] = useState(()=>localStorage.getItem('gs_sheet_url')||'');
+  const [token, setToken] = useState(null);
+  const pendingAction = useRef(null);
+  const [tutorStep, setTutorStep] = useState(clientId?'input':0);
+  const domainUrl = window.location.origin||'http://localhost';
+
+  const saveConfig = () => {
+    localStorage.setItem('gs_client_id', clientId);
+    if(spreadsheetId) localStorage.setItem('gs_sheet_id', spreadsheetId);
+    if(sheetUrl) localStorage.setItem('gs_sheet_url', sheetUrl);
+  };
+
+  const initTokenClient = useCallback(()=>{
+    if(!clientId.trim()){setErrMsg('Masukkan Client ID terlebih dahulu.');setStatus('error');return null;}
+    if(!window.google?.accounts?.oauth2){setErrMsg('Library Google belum dimuat. Refresh halaman.');setStatus('error');return null;}
+    const tc = window.google.accounts.oauth2.initTokenClient({
+      client_id:clientId.trim(), scope:GS_SCOPES,
+      callback:(resp)=>{
+        if(resp.error){setErrMsg('Login gagal: '+resp.error);setStatus('error');return;}
+        setToken(resp.access_token); setStatus('signed');
+        if(pendingAction.current){pendingAction.current(resp.access_token);pendingAction.current=null;}
+      }
+    });
+    return tc;
+  },[clientId]);
+
+  const signIn = ()=>{saveConfig();setStatus('signing');const tc=initTokenClient();if(tc){pendingAction.current=null;tc.requestAccessToken();}};
+
+  const fetchExistingLogIds = async(accessToken,sid)=>{
+    try{
+      const res=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Log%20Produksi!A1:R5000`,{headers:{'Authorization':`Bearer ${accessToken}`}});
+      if(!res.ok) return new Set();
+      const data=await res.json(); const rows=data.values||[]; const ids=new Set();
+      rows.slice(4).forEach(r=>{if(r[17])ids.add(String(r[17]));});
+      return ids;
+    }catch{return new Set();}
+  };
+
+  const buildAllValues = (newOnly=[])=>{
+    const now=new Date().toLocaleString('id-ID');
+    const LOG_H=['Tanggal','Barang','No.Batch','Jam Mulai','Jam Akhir','Durasi (Jam)','Jml Dus','Jml Box','Jml Orang','Harga/Jam','Harga/Dus','Upah Jam/Org','Upah Dus/Org','Upah/Orang','Total Batch','Pegawai','Catatan','_id'];
+    const mapLog=x=>[x.tanggal,x.namaBarang,x.nomorBatch,x.jamAwal||'-',x.jamAkhir||'-',+(x.durasi||0).toFixed(2),+(x.jumlahDus||0),+(x.jumlahBox||0),+(x.jumlahOrang||0),toF(x.hargaPerJam),toF(x.hargaPerDus),+(x.jamPerOrang||0).toFixed(2),+(x.dusPerOrang||0).toFixed(2),+(x.perOrang||0).toFixed(2),+(x.total||0).toFixed(2),(x.listPegawai||[]).join(', '),x.catatan||'',String(x.id)];
+    const newLogRows=newOnly.map(mapLog);
+    const akuRows=[['=== AKUMULASI PEGAWAI ==='],['Diperbarui:',now],[],['No','Nama','Jml Batch','Total Upah Jam','Total Upah Dus','Total Gaji','Rata-rata/Batch'],...akumulasi.map((p,i)=>[i+1,p.nama,p.batchCount,Math.floor(p.totalJam),Math.floor(p.totalDus),Math.floor(p.totalSemua),Math.floor(p.totalSemua/p.batchCount)])];
+    const bulanan={};
+    history.forEach(x=>{const bln=(x.tanggal||'').slice(0,7);if(!bln)return;if(!bulanan[bln])bulanan[bln]={batch:0,orang:new Set(),dus:0,box:0,jam:0,upahJam:0,upahDus:0,total:0};const b=bulanan[bln];b.batch++;(x.listPegawai||[]).forEach(n=>b.orang.add(n.trim().toUpperCase()));b.dus+=+(x.jumlahDus||0);b.box+=+(x.jumlahBox||0);b.jam+=+(x.durasi||0);b.upahJam+=Math.floor(x.jamPerOrang||0)*(+(x.jumlahOrang||0)||1);b.upahDus+=Math.floor(x.dusPerOrang||0)*(+(x.jumlahOrang||0)||1);b.total+=Math.floor(x.total||0);});
+    const blnKeys=Object.keys(bulanan).sort();
+    const ringkasRows=[['=== RINGKASAN BULANAN ==='],['Diperbarui:',now],[],['Bulan','Total Batch','Total Pegawai Unik','Total Dus','Total Box','Total Jam Kerja','Total Upah Jam','Total Upah Dus','Total Gaji','Avg Gaji/Orang','Avg Gaji/Batch'],...blnKeys.map(k=>{const b=bulanan[k];const[yr,mo]=k.split('-');const nm=new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'});return[nm,b.batch,b.orang.size,b.dus,b.box,+b.jam.toFixed(1),+b.upahJam.toFixed(2),+b.upahDus.toFixed(2),+b.total.toFixed(2),b.orang.size>0?+(b.total/b.orang.size).toFixed(2):0,b.batch>0?+(b.total/b.batch).toFixed(2):0];}),[], ['TOTAL',blnKeys.length+' bulan','','','','',+blnKeys.reduce((s,k)=>s+bulanan[k].upahJam,0).toFixed(2),+blnKeys.reduce((s,k)=>s+bulanan[k].upahDus,0).toFixed(2),+blnKeys.reduce((s,k)=>s+bulanan[k].total,0).toFixed(2),'','']];
+    const detailRows=[['=== DETAIL PER BULAN ==='],['Diperbarui:',now],[]];
+    blnKeys.forEach(k=>{const[yr,mo]=k.split('-');const nm=new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'});detailRows.push(['— '+nm.toUpperCase()+' —']);detailRows.push(LOG_H);const bb=history.filter(x=>(x.tanggal||'').slice(0,7)===k);let sub=0;bb.forEach(x=>{detailRows.push(mapLog(x));sub+=(x.total||0);});detailRows.push(['','','','','','','','','','','','','','','SUBTOTAL '+nm,'','Rp '+sub.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}),'']);detailRows.push([]);});
+    return{newLogRows,akuRows,ringkasRows,detailRows,LOG_H};
+  };
+
+  const createSheet = async(accessToken)=>{
+    setStatus('syncing');
+    try{
+      const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets',{method:'POST',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({properties:{title:SHEET_TITLE},sheets:[{properties:{title:'Log Produksi',index:0}},{properties:{title:'Akumulasi Pegawai',index:1}},{properties:{title:'Ringkasan Bulanan',index:2}},{properties:{title:'Detail per Bulan',index:3}}]})});
+      if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Gagal membuat spreadsheet');}
+      const created=await r.json(); const sid=created.spreadsheetId; const url=`https://docs.google.com/spreadsheets/d/${sid}`;
+      setSpreadsheetId(sid);setSheetUrl(url);localStorage.setItem('gs_sheet_id',sid);localStorage.setItem('gs_sheet_url',url);
+      await writeToSheet(accessToken,sid,true);
+    }catch(e){setErrMsg(e.message);setStatus('error');}
+  };
+
+  const writeToSheet = async(accessToken,sid,isNew=false)=>{
+    setStatus('syncing');
+    try{
+      const existingIds=isNew?new Set():await fetchExistingLogIds(accessToken,sid);
+      const newBatches=history.filter(x=>!existingIds.has(String(x.id)));
+      const{newLogRows,akuRows,ringkasRows,detailRows,LOG_H}=buildAllValues(newBatches);
+      const api=(path,method,body)=>fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}${path}`,{method,headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+      if(isNew){
+        const initLog=[['=== LOG PRODUKSI — ARSIP PERMANEN ==='],['Dibuat:',new Date().toLocaleString('id-ID')],[],LOG_H,...history.map(x=>[x.tanggal,x.namaBarang,x.nomorBatch,x.jamAwal||'-',x.jamAkhir||'-',+(x.durasi||0).toFixed(2),+(x.jumlahDus||0),+(x.jumlahBox||0),+(x.jumlahOrang||0),toF(x.hargaPerJam),toF(x.hargaPerDus),Math.floor(x.jamPerOrang||0),Math.floor(x.dusPerOrang||0),Math.floor(x.perOrang||0),Math.floor(x.total||0),(x.listPegawai||[]).join(', '),x.catatan||'',String(x.id)])];
+        await api(`/values/Log%20Produksi!A1?valueInputOption=RAW`,'PUT',{values:initLog});
+      } else if(newLogRows.length>0){
+        await api(`/values/Log%20Produksi!A1:R1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,'POST',{values:newLogRows});
+      }
+      await api(`/values/Akumulasi%20Pegawai!A1:G5000:clear`,'POST');
+      await api(`/values/Akumulasi%20Pegawai!A1?valueInputOption=RAW`,'PUT',{values:akuRows});
+      await api(`/values/Ringkasan%20Bulanan!A1:K5000:clear`,'POST');
+      await api(`/values/Ringkasan%20Bulanan!A1?valueInputOption=RAW`,'PUT',{values:ringkasRows});
+      await api(`/values/Detail%20per%20Bulan!A1:R10000:clear`,'POST');
+      await api(`/values/Detail%20per%20Bulan!A1?valueInputOption=RAW`,'PUT',{values:detailRows});
+      const info=newLogRows.length>0?` (+${newLogRows.length} batch baru)`:'';
+      setStatus('synced');showNotif(`✓ Sync berhasil!${info}`,'success');
+    }catch(e){setErrMsg(e.message);setStatus('error');}
+  };
+
+  const doSync = async()=>{
+    if(!token){saveConfig();const tc=initTokenClient();if(tc){pendingAction.current=spreadsheetId?(t)=>writeToSheet(t,spreadsheetId):(t)=>createSheet(t);tc.requestAccessToken();}return;}
+    if(spreadsheetId) await writeToSheet(token,spreadsheetId); else await createSheet(token);
+  };
+
+  const tutorSteps = [
+    {emoji:'🌐',title:'Buka Google Cloud Console',color:'#1d4ed8',bg:'#eff6ff',border:'#bfdbfe',substeps:[{i:'1',t:<>Klik tombol di bawah → browser buka tab baru</>},{i:'2',t:<>Klik <strong>Pilih Proyek</strong> → <strong>Proyek Baru</strong> → isi nama → <strong>Buat</strong></>}],action:{label:'🌐 Buka Google Cloud Console',url:'https://console.cloud.google.com'},tip:'Kalau muncul halaman persetujuan → klik Setuju saja.'},
+    {emoji:'⚡',title:'Aktifkan Google Sheets API',color:'#059669',bg:'#f0fdf4',border:'#a7f3d0',substeps:[{i:'1',t:<>Pastikan proyek baru sudah terpilih</>},{i:'2',t:<>Klik tombol di bawah → klik <strong>AKTIFKAN / ENABLE</strong></>}],action:{label:'⚡ Buka Halaman Sheets API',url:'https://console.cloud.google.com/apis/library/sheets.googleapis.com'},tip:'Kalau tombol bertuliskan "Kelola" — sudah aktif.'},
+    {emoji:'🔑',title:'Buat OAuth Client ID',color:'#7c3aed',bg:'#f5f3ff',border:'#ddd6fe',substeps:[{i:'1',t:<>Klik tombol di bawah → halaman Kredensial</>},{i:'2',t:<><strong>+ BUAT KREDENSIAL</strong> → <strong>ID Klien OAuth</strong></>},{i:'3',t:<>Pilih jenis: <strong>Aplikasi Web</strong></>}],action:{label:'🔑 Buka Halaman Kredensial',url:'https://console.cloud.google.com/apis/credentials'},tip:'Jangan pilih tipe lain — harus "Aplikasi Web".'},
+    {emoji:'🔗',title:'Daftarkan Domain',color:'#d97706',bg:'#fffbeb',border:'#fde68a',substeps:[{i:'1',t:<>Cari <strong>Authorized JavaScript origins</strong></>},{i:'2',t:<><strong>+ TAMBAHKAN URI</strong> → paste alamat di bawah</>},{i:'3',t:<>Klik <strong>BUAT</strong> → copy <strong>Client ID</strong></>}],copyDomain:domainUrl,tip:'Client Secret tidak perlu dicopy.'},
+    {emoji:'✅',title:'Paste Client ID & Sync!',color:'#059669',bg:'#f0fdf4',border:'#a7f3d0',substeps:[{i:'1',t:<>Paste Client ID ke kolom di bawah</>},{i:'2',t:<>Klik <strong>Login Google</strong> → izinkan</>},{i:'3',t:<>Klik <strong>Buat Spreadsheet & Sync</strong> 🎉</>}],tip:'Client ID tersimpan otomatis untuk sesi berikutnya.'},
+  ];
+  const isInTutor = typeof tutorStep === 'number';
+  const ct = isInTutor ? tutorSteps[tutorStep] : null;
+
+  return (
+    <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="modal gsheet-modal" style={{maxWidth:480,maxHeight:'90vh',overflowY:'auto'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,position:'sticky',top:0,background:'var(--card-bg)',paddingBottom:10,borderBottom:'1px solid var(--border)',zIndex:10}}>
+          <div style={{width:38,height:38,background:'#dbeafe',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#1d4ed8',flexShrink:0}}><Ic n="sheet" s={18}/></div>
+          <div style={{flex:1}}>
+            <h2 style={{fontSize:'.95rem',fontWeight:900,margin:0,textAlign:'left'}}>Sync ke Google Sheets</h2>
+            <p style={{fontSize:'.62rem',color:'var(--muted)',margin:0}}>{isInTutor?`Langkah ${tutorStep+1} dari ${tutorSteps.length}`:'4 tab: Log · Akumulasi · Ringkasan · Detail'}</p>
+          </div>
+          <div style={{display:'flex',gap:5}}>
+            {isInTutor&&<button className="btn btn-ghost btn-sm" style={{padding:'4px 9px',fontSize:'.62rem'}} onClick={()=>setTutorStep('input')}>Lewati</button>}
+            <button className="btn btn-ghost btn-sm" style={{padding:'5px'}} onClick={onClose}><Ic n="x" s={15}/></button>
+          </div>
+        </div>
+        {isInTutor&&<div style={{display:'flex',gap:3,marginBottom:14}}>{tutorSteps.map((_,i)=><div key={i} style={{flex:1,height:3,borderRadius:100,background:i<=tutorStep?'#2563eb':'var(--border)',transition:'background .3s'}}/>)}</div>}
+        {isInTutor&&ct&&(
+          <div>
+            <div style={{background:ct.bg,border:`1px solid ${ct.border}`,borderRadius:12,padding:'14px 16px',marginBottom:12}}>
+              <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:7}}>
+                <span style={{fontSize:'1.4rem'}}>{ct.emoji}</span>
+                <div><div style={{fontSize:'.56rem',fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',color:ct.color,marginBottom:1}}>LANGKAH {tutorStep+1}</div><div style={{fontSize:'.92rem',fontWeight:900,color:'#0f172a'}}>{ct.title}</div></div>
+              </div>
+            </div>
+            <div style={{marginBottom:12}}>{ct.substeps.map((s,i)=><div key={i} style={{display:'flex',alignItems:'flex-start',gap:9,padding:'9px 11px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:9,marginBottom:6}}><div style={{width:20,height:20,borderRadius:'50%',background:ct.color,color:'#fff',fontSize:'.62rem',fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1}}>{s.i}</div><div style={{fontSize:'.8rem',fontWeight:500,color:'var(--ink)',lineHeight:1.5}}>{s.t}</div></div>)}</div>
+            {ct.copyDomain&&<div style={{marginBottom:12}}><div style={{fontSize:'.6rem',fontWeight:800,textTransform:'uppercase',color:'var(--muted)',marginBottom:4}}>Domain yang harus didaftarkan:</div><div style={{display:'flex',gap:7,alignItems:'center'}}><code style={{flex:1,background:'#0f172a',color:'#34d399',padding:'9px 12px',borderRadius:8,fontSize:'.8rem',fontWeight:700,wordBreak:'break-all'}}>{ct.copyDomain}</code><button className="btn btn-ghost btn-sm" onClick={()=>{navigator.clipboard.writeText(ct.copyDomain);showNotif('Domain disalin!','success');}}><Ic n="copy" s={12}/></button></div></div>}
+            {ct.action&&<a href={ct.action.url} target="_blank" rel="noopener noreferrer" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,padding:'10px 16px',background:ct.color,color:'#fff',borderRadius:10,textDecoration:'none',fontWeight:800,fontSize:'.78rem',marginBottom:10}}>{ct.action.label} <Ic n="link" s={12}/></a>}
+            <div style={{background:'#fefce8',border:'1px solid #fde68a',borderRadius:9,padding:'9px 11px',marginBottom:14}}><p style={{fontSize:'.76rem',color:'#92400e',margin:0}}>💡 {ct.tip}</p></div>
+            <div style={{display:'flex',gap:8}}>
+              {tutorStep>0?<button className="btn btn-ghost" style={{flex:1}} onClick={()=>setTutorStep(t=>t-1)}>← Kembali</button>:<button className="btn btn-ghost" style={{flex:1}} onClick={onClose}>Tutup</button>}
+              {tutorStep<tutorSteps.length-1?<button className="btn btn-primary" style={{flex:2}} onClick={()=>setTutorStep(t=>t+1)}>Lanjut →</button>:<button className="btn btn-primary" style={{flex:2,background:'#059669'}} onClick={()=>setTutorStep('input')}>Ke Form Sync ✓</button>}
+            </div>
+          </div>
+        )}
+        {!isInTutor&&(
+          <div>
+            <div className={`gs-status ${status==='synced'?'connected':status==='error'?'error':'pending'}`} style={{marginBottom:12}}>
+              {status==='idle'&&'⬜ Belum terhubung'}{status==='signing'&&'⏳ Menunggu login...'}{status==='signed'&&'✓ Login berhasil!'}{status==='syncing'&&'⏳ Mensinkronkan...'}{status==='synced'&&'✓ Tersinkron!'}{status==='error'&&`✗ ${errMsg}`}
+            </div>
+            <button onClick={()=>setTutorStep(0)} style={{width:'100%',background:'var(--brand-light)',border:'1.5px dashed rgba(37,99,235,.3)',borderRadius:10,padding:'9px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:9,marginBottom:12,fontFamily:'inherit'}}>
+              <span style={{fontSize:'1.1rem'}}>📖</span><div style={{textAlign:'left'}}><div style={{fontSize:'.76rem',fontWeight:800,color:'var(--brand)'}}>Belum punya Client ID?</div><div style={{fontSize:'.65rem',color:'var(--muted)',fontWeight:500}}>Buka panduan setup</div></div><span style={{marginLeft:'auto',color:'var(--brand)'}}>→</span>
+            </button>
+            <div style={{marginBottom:10}}>
+              <label className="lbl">Google Cloud Client ID <span style={{color:'var(--rose)'}}>*</span></label>
+              <input className="inp" value={clientId} onChange={e=>setClientId(e.target.value)} placeholder="XXXXXXXX.apps.googleusercontent.com" style={{fontSize:'.78rem',fontWeight:600}}/>
+            </div>
+            <div style={{marginBottom:12}}>
+              <label className="lbl">Spreadsheet ID <span style={{fontWeight:500,textTransform:'none',color:'var(--subtle)',fontSize:'.56rem'}}>(kosong = buat baru)</span></label>
+              <input className="inp" value={spreadsheetId} onChange={e=>setSpreadsheetId(e.target.value)} placeholder="Kosongkan untuk buat spreadsheet baru" style={{fontSize:'.78rem',fontWeight:600}}/>
+            </div>
+            {sheetUrl&&<a href={sheetUrl} target="_blank" rel="noopener noreferrer" style={{display:'flex',alignItems:'center',gap:6,padding:'8px 12px',background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:9,textDecoration:'none',color:'#0369a1',fontWeight:700,fontSize:'.76rem',marginBottom:12}}><Ic n="link" s={13}/> Buka Spreadsheet</a>}
+            <div style={{display:'flex',gap:9}}>
+              <button className="btn btn-ghost" style={{flex:1}} onClick={onClose}>Tutup</button>
+              {status==='idle'||status==='error'?<button className="btn btn-gsheet" style={{flex:2}} onClick={signIn} disabled={!clientId.trim()}><Ic n="link" s={13}/> Login Google</button>:status==='signing'||status==='syncing'?<button className="btn btn-gsheet" style={{flex:2}} disabled><Spin s={13}/> {status==='signing'?'Login...':'Syncing...'}</button>:<button className="btn btn-gsheet" style={{flex:2}} onClick={doSync}><Ic n="sync" s={13}/> Sync Ulang</button>}
+            </div>
+            {status==='signed'&&<button className="btn btn-gsheet btn-full" style={{marginTop:8}} onClick={doSync}><Ic n="sync" s={13}/> {spreadsheetId?'Sync ke Sheet Ini':'Buat Spreadsheet & Sync'}</button>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+/* ════════════════════════════════════════
+   SLIP GAJI COMPONENT
+════════════════════════════════════════ */
+const SlipGaji = ({ pegawaiNama, history, allBulan, onClose }) => {
+  const [filterBulan, setFilterBulan] = React.useState('');
+
+  const batchesPegawai = React.useMemo(() => {
+    return history.filter(x =>
+      (x.listPegawai||[]).some(n => n.trim().toUpperCase() === pegawaiNama.trim().toUpperCase())
+    ).filter(x => !filterBulan || (x.tanggal||'').slice(0,7) === filterBulan)
+     .sort((a,b) => (a.tanggal > b.tanggal ? -1 : 1));
+  }, [history, pegawaiNama, filterBulan]);
+
+  const totals = React.useMemo(() => ({
+    upahJam: batchesPegawai.reduce((s,x) => s + (parseFloat(x.jamPerOrang)||0), 0),
+    upahDus: batchesPegawai.reduce((s,x) => s + (parseFloat(x.dusPerOrang)||0), 0),
+    totalGaji: batchesPegawai.reduce((s,x) => s + (parseFloat(x.perOrang)||0), 0),
+    batchCount: batchesPegawai.length,
+  }), [batchesPegawai]);
+
+  const initials = pegawaiNama.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const fmtTgl = (t) => { if(!t) return '-'; const [y,m,d]=t.split('-'); return `${d}/${m}/${y}`; };
+  const periodLabel = filterBulan ? (() => {
+    const [yr,mo] = filterBulan.split('-');
+    return new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'});
+  })() : 'Semua Periode';
+
+  const handlePrint = () => {
+    const printContent = document.getElementById('slip-print-area');
+    if (!printContent) return;
+    const win = window.open('','_blank','width=480,height=700');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Slip Gaji - ${pegawaiNama}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0} body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#fff;color:#0f172a}
+      .slip-print{padding:24px;max-width:440px;margin:0 auto}
+      .sh{background:linear-gradient(135deg,#0a0f1e,#0d1b40);color:#fff;padding:20px;border-radius:14px 14px 0 0}
+      .shn{font-size:1.1rem;font-weight:900;margin-bottom:2px} .shs{font-size:.7rem;opacity:.5;margin-bottom:12px}
+      .seb{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:10px}
+      .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#059669);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:900;color:#fff;flex-shrink:0}
+      .en{font-size:.9rem;font-weight:900} .em{font-size:.6rem;opacity:.5;margin-top:2px}
+      .body{padding:16px 0} .pb{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;margin-bottom:12px;font-size:.78rem;font-weight:700}
+      .st{font-size:.52rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
+      .sr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:.76rem}
+      .sl{color:#475569;font-weight:600} .sv{font-weight:800}
+      .bi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:6px}
+      .bn{font-size:.8rem;font-weight:800;margin-bottom:2px} .bm{font-size:.6rem;color:#64748b;font-weight:600;margin-bottom:5px}
+      .ba{display:flex;gap:5px;flex-wrap:wrap} .bab{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:3px 7px;font-size:.62rem;font-weight:800}
+      .tb{background:linear-gradient(135deg,#0a0f1e,#0d1b40);border-radius:10px;padding:14px 16px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}
+      .tl{font-size:.52rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.45)} .ta{font-size:1.4rem;font-weight:900;color:#fbbf24}
+      .fn{font-size:.6rem;color:#94a3b8;text-align:center;margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0;line-height:1.6}
+      .green{color:#059669} .blue{color:#2563eb}
+    </style></head><body><div class="slip-print">
+    <div class="sh">
+      <div class="shn">SLIP GAJI BORONGAN</div>
+      <div class="shs">Upah Borongan · Produksi</div>
+      <div class="seb"><div class="av">${initials}</div><div><div class="en">${pegawaiNama}</div><div class="em">${totals.batchCount} batch · ${periodLabel}</div></div></div>
+    </div>
+    <div style="padding:16px">
+    <div class="pb"><span>Periode</span><strong>${periodLabel}</strong></div>
+    <div class="pb"><span>Total Batch</span><strong>${totals.batchCount} batch</strong></div>
+    <div class="st">RINCIAN UPAH</div>
+    <div class="sr"><span class="sl">Upah Jam (flat)</span><span class="sv blue">Rp ${(totals.upahJam||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+    <div class="sr"><span class="sl">Upah Dus (bagi)</span><span class="sv green">Rp ${(totals.upahDus||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+
+    <div class="tb"><div><div class="tl">Total Gaji Diterima</div><div class="ta">Rp ${(totals.totalGaji||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div></div>
+    <div class="fn">Dicetak: ${new Date().toLocaleString('id-ID')}<br>Upah Borongan — Sistem Pencatatan Produksi</div>
+    </div></div></body></html>`);
+    win.document.close();
+    setTimeout(()=>{win.print();},400);
+  };
+
+  return (
+    <div className="slip-overlay" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="slip-modal">
+        {/* HEADER */}
+        <div className="slip-header">
+          <div className="slip-header-dots"/>
+          <button className="slip-close-btn" onClick={onClose}>✕</button>
+          <div className="slip-header-inner">
+            <div className="slip-company">Upah Borongan · Produksi</div>
+            <div className="slip-title-main">SLIP GAJI BORONGAN</div>
+            <div className="slip-subtitle">{periodLabel}</div>
+            <div className="slip-employee-box">
+              <div className="slip-avatar">{initials}</div>
+              <div>
+                <div className="slip-emp-name">{pegawaiNama}</div>
+                <div className="slip-emp-meta">{totals.batchCount} batch · {periodLabel}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BODY */}
+        <div id="slip-print-area" className="slip-body">
+          {/* Filter bulan */}
+          <div className="slip-period-bar">
+            <div>
+              <div className="slip-period-label">Filter Periode</div>
+              <div className="slip-period-val">{periodLabel}</div>
+            </div>
+            <select value={filterBulan} onChange={e=>setFilterBulan(e.target.value)}
+              style={{padding:'6px 10px',background:'var(--surface,#f8fafc)',border:'1.5px solid #e2e8f0',borderRadius:8,fontFamily:'inherit',fontWeight:700,fontSize:'.72rem',color:'#0f172a',outline:'none',cursor:'pointer'}}>
+              <option value="">Semua Bulan</option>
+              {allBulan.map(b=>{const[yr,mo]=b.split('-');const nm=new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'});return<option key={b} value={b}>{nm}</option>})}
+            </select>
+          </div>
+
+          {/* Ringkasan */}
+          <div className="slip-section-title">RINGKASAN UPAH</div>
+          <div className="slip-row"><span className="slip-row-label">Total Batch</span><span className="slip-row-val">{totals.batchCount} batch</span></div>
+          <div className="slip-row"><span className="slip-row-label">Upah Jam (flat)</span><span className="slip-row-val blue">Rp {(totals.upahJam||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+          <div className="slip-row"><span className="slip-row-label">Upah Dus (bagi)</span><span className="slip-row-val green">Rp {(totals.upahDus||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+
+          {/* Total */}
+          <div className="slip-total-box">
+            <div>
+              <div className="slip-total-label">Total Gaji Diterima</div>
+              <div className="slip-total-amount">Rp {(totals.totalGaji||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:'.52rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'rgba(255,255,255,.35)',marginBottom:2}}>{totals.batchCount} batch</div>
+              <div style={{fontSize:'.7rem',fontWeight:800,color:'rgba(255,255,255,.5)'}}>{periodLabel}</div>
+            </div>
+          </div>
+
+          <div className="slip-footer-note">
+            Dicetak: {new Date().toLocaleString('id-ID')}<br/>
+            Slip ini adalah bukti pembayaran upah borongan produksi.<br/>
+            <span style={{opacity:.6}}>&#169; 2026 Rahmat Susanto &mdash; Upah Borongan App</span>
+          </div>
+        </div>
+
+        {/* ACTION BUTTONS */}
+        <div className="slip-actions">
+          <button className="btn btn-ghost" style={{flex:1}} onClick={onClose}>Tutup</button>
+          <button className="btn btn-primary" style={{flex:2,gap:6}} onClick={handlePrint}>
+            🖨️ Cetak / Simpan PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+/* ════════════════════════════════════════
+   MAIN APP
+════════════════════════════════════════ */
+const App = () => {
+  const KEY = 'ubclaude_v1';
+  const TPL_KEY = 'ubclaude_tpl_v1';
+  const THEME_KEY = 'ubclaude_theme';
+  // ── tambah tdsPerBox ke init ──
+  const init = { tanggal:new Date().toISOString().split('T')[0],namaBarang:'',nomorBatch:'',jumlahBox:'',tdsPerBox:'',dusNonStandar:'',jumlahDus:'',jamAwal:'',jamAkhir:'',jamEfektif:'',hargaPerJam:'',hargaPerDus:'',jumlahOrang:'',daftarPegawai:[],catatan:'' };
+
+  const [form, setForm] = useState({...init, nomorBatch:'B-001'});
+  const [history, setHistory] = useState(()=>{try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):[];}catch{return[];}});
+  const [templates, setTemplates] = useState(()=>{try{const s=localStorage.getItem(TPL_KEY);return s?JSON.parse(s):[];}catch{return[];}});
+  const [darkMode, setDarkMode] = useState(()=>localStorage.getItem(THEME_KEY)==='dark');
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
+  const [showGSheet, setShowGSheet] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
+  const [showRestore, setShowRestore] = useState(false);
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState('input');
+  const [notif, setNotif] = useState(null);
+  const [filterDate, setFilterDate] = useState('');
+  const [filterBulan, setFilterBulan] = useState('');
+  const [sortBy, setSortBy] = useState('terbaru');
+  const [expandedId, setExpandedId] = useState(null);
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [editItem, setEditItem] = useState(null);
+  const [editLogId, setEditLogId] = useState(null);   // id batch yang sedang di-edit inline di log
+  const [editLogForm, setEditLogForm] = useState(null); // form state untuk inline edit
+  const [slipGajiPegawai, setSlipGajiPegawai] = useState(null);
+  const [filterBulanSlip, setFilterBulanSlip] = useState('');
+  const [katalog, setKatalog] = useState(()=>{
+    try{
+      const s=localStorage.getItem(KATALOG_KEY);
+      if(!s) return KATALOG_DEFAULT;
+      const parsed=JSON.parse(s);
+      if(!Array.isArray(parsed)||parsed.length===0) return KATALOG_DEFAULT;
+      // Sanitasi: pastikan semua item punya nama string & harga number
+      return parsed.map(p=>({
+        nama: String(p.nama||''),
+        harga: typeof p.harga==='number' ? p.harga : parseFloat(String(p.harga||0).replace(',','.')) || 0
+      })).filter(p=>p.nama.trim());
+    }catch{return KATALOG_DEFAULT;}
+  });
+  const [katalogSearch, setKatalogSearch] = useState('');
+  const [editProduk, setEditProduk] = useState(null); // {idx, nama, harga} or null
+  const [addProdukForm, setAddProdukForm] = useState({nama:'',harga:''});
+  const [showAddProduk, setShowAddProduk] = useState(false);
+
+  useEffect(()=>{document.documentElement.setAttribute('data-theme', darkMode?'dark':'light');localStorage.setItem(THEME_KEY, darkMode?'dark':'light');},[darkMode]);
+  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(history));}catch{}},[history]);
+  useEffect(()=>{try{localStorage.setItem(TPL_KEY,JSON.stringify(templates));}catch{}},[templates]);
+  useEffect(()=>{try{localStorage.setItem(KATALOG_KEY,JSON.stringify(katalog));}catch{}},[katalog]);
+
+  const toast = (msg,type='success') => setNotif({msg,type});
+
+  const allNames = useMemo(()=>{
+    const s=new Set();
+    history.forEach(x=>(x.listPegawai||[]).forEach(n=>{if(n&&n!=='Tanpa Nama')s.add(n);}));
+    return [...s].sort();
+  },[history]);
+
+  // Konversi Box → Dus via TDS
+  const dusDariTds = useMemo(()=>{
+    const box = parseInt(form.jumlahBox) || 0;
+    const tds = parseInt(form.tdsPerBox) || 0;
+    return (box > 0 && tds > 0) ? box * tds : 0;
+  }, [form.jumlahBox, form.tdsPerBox]);
+
+  const dusNonStandarVal = parseInt(form.dusNonStandar) || 0;
+  // TDS aktif = tdsPerBox terisi
+  const tdsActive = (parseInt(form.tdsPerBox)||0) > 0;
+  // ada penambahan dari dus non standar
+  const nonStandarActive = dusNonStandarVal > 0;
+  // total dus yang terkalkulasi otomatis
+  const totalDusAuto = dusDariTds + dusNonStandarVal;
+
+  const durasi = (f=form) => {
+    if(f.jamEfektif) return toF(f.jamEfektif);
+    if(!f.jamAwal||!f.jamAkhir) return 0;
+    const a=new Date(`2000-01-01T${f.jamAwal}`),b=new Date(`2000-01-01T${f.jamAkhir}`);
+    let d=(b-a)/3600000; if(d<0)d+=24; return d;
+  };
+  const calc = (f=form, overrideDus=null) => {
+    const d=durasi(f),hJ=toF(f.hargaPerJam),hD=toF(f.hargaPerDus);
+    const n=parseInt(f.jumlahOrang)||0;
+    const nd = overrideDus !== null ? overrideDus : (parseInt(f.jumlahDus)||0);
+    const jpo=d*hJ,dT=nd*hD,dpo=n>0?dT/n:dT,po=jpo+dpo;
+    return{dur:d,perOrang:po,jamPerOrang:jpo,dusPerOrang:dpo,total:po*(n||1)};
+  };
+  const live = calc(form, parseInt(form.jumlahDus)||0);
+
+  const onChange = e => {
+    const{name,value}=e.target;
+    setForm(p=>{
+      const n={...p};
+      if(['jamEfektif','hargaPerJam','hargaPerDus'].includes(name)) n[name]=cleanN(value);
+      else if(['jumlahBox','jumlahDus','jumlahOrang','tdsPerBox','dusNonStandar'].includes(name)){
+        const c=value.replace(/\D/g,'').replace(/^0+/,'')||'';
+        n[name]=c;
+        if(name==='jumlahOrang'){
+          const cnt=parseInt(c)||0,arr=[...p.daftarPegawai];
+          if(cnt>arr.length) for(let i=arr.length;i<cnt;i++) arr.push('');
+          else arr.length=cnt;
+          n.daftarPegawai=arr;
+        }
+        // Hitung ulang jumlahDus jika ada perubahan di box, tds, atau dusNonStandar
+        if(['jumlahBox','tdsPerBox','dusNonStandar'].includes(name)){
+          const box   = name==='jumlahBox'      ? (parseInt(c)||0) : (parseInt(p.jumlahBox)||0);
+          const tds   = name==='tdsPerBox'      ? (parseInt(c)||0) : (parseInt(p.tdsPerBox)||0);
+          const extra = name==='dusNonStandar'  ? (parseInt(c)||0) : (parseInt(p.dusNonStandar)||0);
+          const fromTds = (box>0 && tds>0) ? box*tds : 0;
+          // hanya auto-update jumlahDus jika ada TDS aktif ATAU ada dusNonStandar
+          if(tds>0 || extra>0) n.jumlahDus = String(fromTds + extra);
+        }
+      } else n[name]=value;
+      return n;
+    });
+  };
+  const onPeg=(i,v)=>{const a=[...form.daftarPegawai];a[i]=v;setForm(p=>({...p,daftarPegawai:a}));};
+
+  /* ── Helper: kalkulasi untuk form apa pun ── */
+  const calcFor = (f) => {
+    const d = (() => {
+      if(f.jamEfektif) return toF(f.jamEfektif);
+      if(!f.jamAwal||!f.jamAkhir) return 0;
+      const a=new Date(`2000-01-01T${f.jamAwal}`),b=new Date(`2000-01-01T${f.jamAkhir}`);
+      let dd=(b-a)/3600000; if(dd<0)dd+=24; return dd;
+    })();
+    const hJ=toF(f.hargaPerJam),hD=toF(f.hargaPerDus);
+    const n=parseInt(f.jumlahOrang)||0, nd=parseInt(f.jumlahDus)||0;
+    const jpo=d*hJ,dT=nd*hD,dpo=n>0?dT/n:dT,po=jpo+dpo;
+    return{dur:d,perOrang:po,jamPerOrang:jpo,dusPerOrang:dpo,total:po*(n||1)};
+  };
+
+  /* ── onChange untuk inline log edit ── */
+  const onEditLogChange = e => {
+    const{name,value}=e.target;
+    setEditLogForm(p=>{
+      const n={...p};
+      if(['jamEfektif','hargaPerJam','hargaPerDus'].includes(name)) n[name]=cleanN(value);
+      else if(['jumlahBox','jumlahDus','jumlahOrang','tdsPerBox','dusNonStandar'].includes(name)){
+        const c=value.replace(/\D/g,'').replace(/^0+/,'')||'';
+        n[name]=c;
+        if(name==='jumlahOrang'){
+          const cnt=parseInt(c)||0,arr=[...(p.daftarPegawai||[])];
+          if(cnt>arr.length) for(let i=arr.length;i<cnt;i++) arr.push('');
+          else arr.length=cnt;
+          n.daftarPegawai=arr;
+        }
+        if(['jumlahBox','tdsPerBox','dusNonStandar'].includes(name)){
+          const box   = name==='jumlahBox'     ? (parseInt(c)||0) : (parseInt(p.jumlahBox)||0);
+          const tds   = name==='tdsPerBox'     ? (parseInt(c)||0) : (parseInt(p.tdsPerBox)||0);
+          const extra = name==='dusNonStandar' ? (parseInt(c)||0) : (parseInt(p.dusNonStandar)||0);
+          const fromTds = (box>0&&tds>0) ? box*tds : 0;
+          if(tds>0||extra>0) n.jumlahDus=String(fromTds+extra);
+        }
+      } else n[name]=value;
+      return n;
+    });
+  };
+  const onEditLogPeg=(i,v)=>{const a=[...(editLogForm.daftarPegawai||[])];a[i]=v;setEditLogForm(p=>({...p,daftarPegawai:a}));};
+
+  /* ── Buka inline edit ── */
+  const openEditLog = (item, e) => {
+    e.stopPropagation();
+    setEditLogId(item.id);
+    setExpandedId(null);
+    setEditLogForm({
+      ...item,
+      tdsPerBox: item.tdsPerBox||'',
+      dusNonStandar: item.dusNonStandar||'',
+      daftarPegawai: item.listPegawai ? [...item.listPegawai] : [],
+    });
+  };
+
+  /* ── Simpan inline edit ── */
+  const saveEditLog = () => {
+    if(!editLogForm) return;
+    const finalDus = parseInt(editLogForm.jumlahDus)||0;
+    const u = calcFor({...editLogForm, jumlahDus: String(finalDus)});
+    const d = (() => {
+      if(editLogForm.jamEfektif) return toF(editLogForm.jamEfektif);
+      if(!editLogForm.jamAwal||!editLogForm.jamAkhir) return 0;
+      const a=new Date(`2000-01-01T${editLogForm.jamAwal}`),b=new Date(`2000-01-01T${editLogForm.jamAkhir}`);
+      let dd=(b-a)/3600000; if(dd<0)dd+=24; return dd;
+    })();
+    const rec = {
+      ...editLogForm,
+      jumlahDus: String(finalDus),
+      perOrang: u.perOrang, jamPerOrang: u.jamPerOrang,
+      dusPerOrang: u.dusPerOrang, durasi: d, total: u.total,
+      listPegawai: (editLogForm.daftarPegawai||[]).map(n=>n.trim()||'Tanpa Nama'),
+      id: editLogId,
+    };
+    setHistory(p=>p.map(x=>x.id===editLogId?rec:x));
+    setEditLogId(null);
+    setEditLogForm(null);
+    toast('Batch berhasil diupdate!','success');
+  };
+
+  const nextBatchNo = () => {
+    if(!history.length) return 'B-001';
+    const nums = history.map(x=>{const m=(x.nomorBatch||'').match(/(\d+)$/);return m?parseInt(m[1]):0;});
+    const next = Math.max(...nums)+1;
+    const prefix = (history[0]?.nomorBatch||'B-001').replace(/\d+$/,'') || 'B-';
+    return prefix + String(next).padStart(3,'0');
+  };
+
+  const resetForm = (keepTanggal=true) => {
+    const tgl = keepTanggal ? form.tanggal : new Date().toISOString().split('T')[0];
+    setForm({...init, tanggal:tgl, nomorBatch:nextBatchNo()});
+    setEditItem(null);
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+
+  const saveTemplate = () => {
+    const name = window.prompt('Nama template ini?', form.namaBarang||'Template Baru');
+    if(!name) return;
+    const tpl = { id:Date.now(), name, namaBarang:form.namaBarang, hargaPerJam:form.hargaPerJam, hargaPerDus:form.hargaPerDus, jumlahOrang:form.jumlahOrang, tdsPerBox:form.tdsPerBox, daftarPegawai:[...form.daftarPegawai] };
+    setTemplates(p=>[tpl,...p.slice(0,9)]);
+    toast(`Template "${name}" disimpan!`,'success');
+  };
+  const loadTemplate = (tpl) => {
+    setForm(p=>({...p, namaBarang:tpl.namaBarang, hargaPerJam:tpl.hargaPerJam, hargaPerDus:tpl.hargaPerDus, jumlahOrang:tpl.jumlahOrang, tdsPerBox:tpl.tdsPerBox||'', daftarPegawai:[...tpl.daftarPegawai]}));
+    toast(`Template "${tpl.name}" dimuat!`,'info');
+  };
+  const delTemplate = (id,e) => { e.stopPropagation(); setTemplates(p=>p.filter(t=>t.id!==id)); };
+
+  const onSubmit = e => {
+    e.preventDefault(); setLoading(true);
+    const finalDus = parseInt(form.jumlahDus) || 0;
+    const u = calc(form, finalDus);
+    const rec={...form,jumlahDus:String(finalDus),perOrang:u.perOrang,jamPerOrang:u.jamPerOrang,dusPerOrang:u.dusPerOrang,durasi:durasi(form),total:u.total,listPegawai:form.daftarPegawai.map(n=>n.trim()||'Tanpa Nama')};
+    if(editItem) {
+      setHistory(p=>p.map(x=>x.id===editItem?{...rec,id:editItem}:x));
+      setTimeout(()=>{setLoading(false);toast('Batch berhasil diupdate!','success');resetForm(true);},350);
+    } else {
+      rec.id = Date.now()+Math.random();
+      setHistory(p=>[rec,...p]);
+      setTimeout(()=>{setLoading(false);setShowSuccess(true);},350);
+    }
+  };
+
+  const akumulasi = useMemo(()=>{
+    const m={};
+    history.forEach(x=>(x.listPegawai||[]).forEach(nama=>{
+      const k=nama.trim().toUpperCase();
+      if(!k||k==='TANPA NAMA') return;
+      if(!m[k]) m[k]={nama:k,totalJam:0,totalDus:0,totalSemua:0,batchCount:0};
+      m[k].totalJam+=parseFloat(x.jamPerOrang)||0;
+      m[k].totalDus+=parseFloat(x.dusPerOrang)||0;
+      m[k].totalSemua+=parseFloat(x.perOrang)||0;
+      m[k].batchCount+=1;
+    }));
+    return Object.values(m).sort((a,b)=>b.totalSemua-a.totalSemua);
+  },[history]);
+
+  const filtHist = useMemo(()=>{
+    let a=[...history];
+    if(search.trim()){const q=search.toLowerCase();a=a.filter(x=>x.listPegawai.some(n=>n.toLowerCase().includes(q))||x.namaBarang.toLowerCase().includes(q)||(x.nomorBatch||'').toLowerCase().includes(q));}
+    if(filterDate) a=a.filter(x=>x.tanggal===filterDate);
+    if(filterBulan) a=a.filter(x=>(x.tanggal||'').slice(0,7)===filterBulan);
+    if(sortBy==='terbaru') a.sort((a,b)=>b.id-a.id);
+    else if(sortBy==='terlama') a.sort((a,b)=>a.id-b.id);
+    else if(sortBy==='tertinggi') a.sort((a,b)=>b.perOrang-a.perOrang);
+    else if(sortBy==='terendah') a.sort((a,b)=>a.perOrang-b.perOrang);
+    return a;
+  },[history,search,filterDate,filterBulan,sortBy]);
+
+  const filtAku = useMemo(()=>{
+    if(!search.trim()) return akumulasi;
+    const q=search.toLowerCase();
+    return akumulasi.filter(p=>p.nama.toLowerCase().includes(q));
+  },[akumulasi,search]);
+
+  const stats = useMemo(()=>({
+    totalGaji:history.reduce((s,x)=>s+(x.total||0),0),
+    totalBatch:history.length,
+    totalPegawai:akumulasi.length,
+    avgPerOrang:akumulasi.length>0?akumulasi.reduce((s,x)=>s+x.totalSemua,0)/akumulasi.length:0
+  }),[history,akumulasi]);
+
+  const maxGaji = akumulasi[0]?.totalSemua||1;
+
+  const chartBulanan = useMemo(()=>{
+    const m={};
+    history.forEach(x=>{const k=(x.tanggal||'').slice(0,7);if(!k)return;if(!m[k])m[k]=0;m[k]+=Math.floor(x.total||0);});
+    return Object.keys(m).sort().slice(-6).map(k=>{const[yr,mo]=k.split('-');return{label:new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'short',year:'2-digit'}),val:m[k]};});
+  },[history]);
+
+  const chartPegawai = useMemo(()=>akumulasi.slice(0,6).map(p=>({label:p.nama.slice(0,12),val:p.totalSemua})),[akumulasi]);
+
+  const exportExcel = () => {
+    if(!window.XLSX){toast('Library XLSX tidak tersedia. Pastikan koneksi internet aktif.','error');return;}
+    if(!history||history.length===0){toast('Tidak ada data batch. Simpan batch terlebih dahulu, lalu export.','error');return;}
+    const X=window.XLSX,wb=X.utils.book_new(),now=new Date().toLocaleString('id-ID');
+    const LOG_H=['Tanggal','Barang','No.Batch','Jam Mulai','Jam Akhir','Durasi','Jml Dus','Jml Box','TDS/Box','Jml Orang','Harga/Jam','Harga/Dus','Upah Jam/Org','Upah Dus/Org','Upah/Orang','Total Batch','Pegawai','Catatan'];
+    const mapLog=x=>[x.tanggal,x.namaBarang,x.nomorBatch,x.jamAwal||'-',x.jamAkhir||'-',+(x.durasi||0).toFixed(2),+(x.jumlahDus||0),+(x.jumlahBox||0),+(x.tdsPerBox||0),+(x.jumlahOrang||0),toF(x.hargaPerJam),toF(x.hargaPerDus),+(x.jamPerOrang||0).toFixed(2),+(x.dusPerOrang||0).toFixed(2),+(x.perOrang||0).toFixed(2),+(x.total||0).toFixed(2),(x.listPegawai||[]).join(', '),x.catatan||''];
+    const colWidths=[10,22,12,10,10,10,10,10,10,10,12,12,14,14,14,14,40,30].map(w=>({wch:w}));
+    const ws1=X.utils.aoa_to_sheet([['LAPORAN UPAH BORONGAN — LOG PRODUKSI'],['Diekspor:',now],[],LOG_H,...history.map(mapLog)]);
+    ws1['!cols']=colWidths;
+    X.utils.book_append_sheet(wb,ws1,'Log Produksi');
+    const ws2=X.utils.aoa_to_sheet([['AKUMULASI PEGAWAI'],['Diekspor:',now],[],['No','Nama','Jml Batch','Total Upah Jam','Total Upah Dus','Total Gaji','Rata-rata/Batch'],...akumulasi.map((p,i)=>[i+1,p.nama,p.batchCount,Math.floor(p.totalJam),Math.floor(p.totalDus),Math.floor(p.totalSemua),Math.floor(p.totalSemua/p.batchCount)])]);
+    ws2['!cols']=[5,25,12,16,16,16,18].map(w=>({wch:w}));
+    X.utils.book_append_sheet(wb,ws2,'Akumulasi Pegawai');
+    const bulanan={};
+    history.forEach(x=>{const bln=(x.tanggal||'').slice(0,7);if(!bln)return;if(!bulanan[bln])bulanan[bln]={batch:0,orang:new Set(),dus:0,box:0,jam:0,upahJam:0,upahDus:0,total:0};const b=bulanan[bln];b.batch++;(x.listPegawai||[]).forEach(n=>b.orang.add(n.trim().toUpperCase()));b.dus+=+(x.jumlahDus||0);b.box+=+(x.jumlahBox||0);b.jam+=+(x.durasi||0);b.upahJam+=Math.floor(x.jamPerOrang||0)*(+(x.jumlahOrang||0)||1);b.upahDus+=Math.floor(x.dusPerOrang||0)*(+(x.jumlahOrang||0)||1);b.total+=Math.floor(x.total||0);});
+    const blnKeys=Object.keys(bulanan).sort();
+    const ws3=X.utils.aoa_to_sheet([['RINGKASAN BULANAN'],['Diekspor:',now],[],['Bulan','Total Batch','Total Pegawai Unik','Total Dus','Total Box','Total Jam Kerja','Total Upah Jam','Total Upah Dus','Total Gaji','Avg Gaji/Orang','Avg Gaji/Batch'],...blnKeys.map(k=>{const b=bulanan[k];const[yr,mo]=k.split('-');const nm=new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'});return[nm,b.batch,b.orang.size,b.dus,b.box,+b.jam.toFixed(1),+b.upahJam.toFixed(2),+b.upahDus.toFixed(2),+b.total.toFixed(2),b.orang.size>0?+(b.total/b.orang.size).toFixed(2):0,b.batch>0?+(b.total/b.batch).toFixed(2):0];}),[], ['TOTAL',blnKeys.length+' bulan','','','','',+blnKeys.reduce((s,k)=>s+bulanan[k].upahJam,0).toFixed(2),+blnKeys.reduce((s,k)=>s+bulanan[k].upahDus,0).toFixed(2),+blnKeys.reduce((s,k)=>s+bulanan[k].total,0).toFixed(2),'','']]);
+    ws3['!cols']=[22,12,16,10,10,14,16,16,16,16,16].map(w=>({wch:w}));
+    X.utils.book_append_sheet(wb,ws3,'Ringkasan Bulanan');
+    const det=[['DETAIL PER BULAN'],['Diekspor:',now],[]];
+    blnKeys.forEach(k=>{const[yr,mo]=k.split('-');const nm=new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'});det.push(['— '+nm.toUpperCase()+' —']);det.push(LOG_H);const bb=history.filter(x=>(x.tanggal||'').slice(0,7)===k).sort((a,b)=>a.tanggal>b.tanggal?1:-1);let sub=0;bb.forEach(x=>{det.push(mapLog(x));sub+=(x.total||0);});det.push(['','','','','','','','','','','','','','','SUBTOTAL '+nm,'','Rp '+sub.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})]);det.push([]);});
+    const ws4=X.utils.aoa_to_sheet(det);ws4['!cols']=colWidths;X.utils.book_append_sheet(wb,ws4,'Detail per Bulan');
+    X.writeFile(wb,`Upah_Borongan_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast('File Excel berhasil diunduh!','success');
+  };
+
+  const bulanOptions = useMemo(()=>[...new Set(history.map(x=>(x.tanggal||'').slice(0,7)).filter(Boolean))].sort().reverse(),[history]);
+  const activeFilters = (search?1:0)+(filterDate?1:0)+(filterBulan?1:0)+(sortBy!=='terbaru'?1:0);
+
+  const TABS = [
+    {id:'input', label:'Input', icon:'input'},
+    {id:'log', label:'Log', icon:'list'},
+    {id:'pegawai', label:'Pegawai', icon:'users'},
+    {id:'katalog', label:'Katalog', icon:'tag'},
+    {id:'chart', label:'Grafik', icon:'chart'},
+  ];
+
+  return (
+    <div className="app">
+      {notif&&<Notif msg={notif.msg} type={notif.type} onClose={()=>setNotif(null)}/>}
+
+      {/* SUCCESS MODAL */}
+      {showSuccess&&(
+        <div className="overlay"><div className="modal">
+          <div className="modal-icon success"><Ic n="check" s={32}/></div>
+          <h2>Batch Tersimpan!</h2>
+          <p>Data upah borongan berhasil dicatat.</p>
+          <div className="modal-result">
+            <div className="modal-result-lbl">Estimasi Upah Per Orang</div>
+            <div className="modal-result-val">{fRp(live.perOrang)}</div>
+          </div>
+          <div className="modal-btns">
+            <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{setShowSuccess(false);setTab('log');}}>Lihat Log</button>
+            <button className="btn btn-primary" style={{flex:2}} onClick={()=>{setShowSuccess(false);resetForm(true);}}><Ic n="plus" s={14}/> Batch Baru</button>
+          </div>
+        </div></div>
+      )}
+
+      {confirmDeleteId&&(
+        <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)setConfirmDeleteId(null);}}>
+          <div className="modal">
+            <div className="modal-icon danger"><Ic n="trash" s={28}/></div>
+            <h2>Hapus Batch Ini?</h2>
+            <p>Batch <strong>{history.find(x=>x.id===confirmDeleteId)?.nomorBatch}</strong> akan dihapus permanen.</p>
+            <div className="modal-btns">
+              <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setConfirmDeleteId(null)}>Batal</button>
+              <button className="btn btn-primary" style={{flex:1,background:'#e11d48'}} onClick={()=>{setHistory(p=>p.filter(x=>x.id!==confirmDeleteId));setConfirmDeleteId(null);toast('Batch dihapus','info');}}>Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirmClear&&(
+        <div className="overlay"><div className="modal">
+          <div className="modal-icon danger"><Ic n="trash" s={28}/></div>
+          <h2>Hapus Semua Data?</h2>
+          <p>Seluruh <strong>{history.length} batch</strong> akan dihapus permanen.</p>
+          <div className="modal-btns">
+            <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setShowConfirmClear(false)}>Batal</button>
+            <button className="btn btn-primary" style={{flex:1,background:'#e11d48'}} onClick={()=>{setHistory([]);localStorage.removeItem(KEY);setShowConfirmClear(false);toast('Semua data dihapus','info');}}>Hapus Semua</button>
+          </div>
+        </div></div>
+      )}
+
+      {showGSheet&&<GSheetModal history={history} akumulasi={akumulasi} onClose={()=>setShowGSheet(false)} showNotif={toast}/>}
+      {showBackup&&<BackupModal history={history} onImport={rows=>{setHistory(p=>{const ids=new Set(p.map(x=>String(x.id)));const newRows=rows.filter(x=>!ids.has(String(x.id)));return[...p,...newRows];});}} onClose={()=>setShowBackup(false)} toast={toast} initialTab="export"/>}
+      {showRestore&&<BackupModal history={history} onImport={rows=>{setHistory(p=>{const ids=new Set(p.map(x=>String(x.id)));const newRows=rows.filter(x=>!ids.has(String(x.id)));return[...p,...newRows];});}} onClose={()=>setShowRestore(false)} toast={toast} initialTab="import"/>}
+      {slipGajiPegawai&&<SlipGaji pegawaiNama={slipGajiPegawai} history={history} allBulan={bulanOptions} onClose={()=>setSlipGajiPegawai(null)}/>}
+
+      {/* ════ HEADER ════ */}
+      <div className="header">
+        <div className="header-dots"/>
+        <div className="container header-inner">
+          <div className="header-top">
+            <div className="brand">
+              <div className="brand-icon"><Ic n="calc" s={22}/></div>
+              <div>
+                <div className="brand-sub">Manajemen Produksi</div>
+                <div className="brand-title">Upah Borongan</div>
+                <div className="brand-status"><div className="dot-live"/><span>Data tersimpan lokal</span></div>
+              </div>
+            </div>
+            <div className="header-right">
+              <div className="header-stats">
+                <div className="hstat"><div className="hstat-label">Batch</div><div className="hstat-val" style={{color:'#60a5fa'}}>{stats.totalBatch}</div></div>
+                <div className="hstat"><div className="hstat-label">Pegawai</div><div className="hstat-val" style={{color:'#34d399'}}>{stats.totalPegawai}</div></div>
+                <div className="hstat"><div className="hstat-label">Total Gaji</div><div className="hstat-val" style={{color:'#fbbf24',fontSize:'.82rem'}}>{fRp(stats.totalGaji)}</div></div>
+              </div>
+              <div className="header-actions">
+                <button className="dm-btn" onClick={()=>setDarkMode(d=>!d)}><Ic n={darkMode?'sun':'moon'} s={13}/>{darkMode?'Light':'Dark'}</button>
+                <button className="dm-btn" onClick={()=>setShowBackup(true)}><Ic n="backup" s={13}/>Backup</button>
+                <button className="dm-btn" onClick={()=>setShowRestore(true)}><Ic n="ul" s={13}/>Restore</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ════ TOP NAV BAR ════ */}
+      <div className="top-nav">
+        <div className="top-nav-inner">
+          <div className="tn-search">
+            <span className="tn-search-icon"><Ic n="search" s={14}/></span>
+            <input className="tn-inp" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari pegawai, batch, barang..."/>
+            {search&&<button className="tn-clear" onClick={()=>setSearch('')}><Ic n="x" s={13}/></button>}
+          </div>
+          <div className="tn-div"/>
+          <div className="tn-date-wrap">
+            <input type="date" value={filterDate} onChange={e=>{setFilterDate(e.target.value);setFilterBulan('');}}/>
+            <button className={`tn-pill ${filterDate?'active':''}`}>
+              <Ic n="clock" s={12}/>
+              {filterDate ? new Date(filterDate+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : 'Tanggal'}
+              {filterDate&&<span className="pill-x" onClick={e=>{e.stopPropagation();setFilterDate('');}}>✕</span>}
+            </button>
+          </div>
+          <div style={{position:'relative',flexShrink:0}}>
+            <select value={filterBulan} onChange={e=>{setFilterBulan(e.target.value);setFilterDate('');}} className="tn-select" style={{paddingRight:filterBulan?'28px':'10px',color:filterBulan?'var(--brand)':'var(--muted)',borderColor:filterBulan?'var(--brand)':'var(--border)',background:filterBulan?'var(--brand-light)':'var(--surface)'}}>
+              <option value="">Semua Bulan</option>
+              {bulanOptions.map(k=>{const[yr,mo]=k.split('-');return <option key={k} value={k}>{new Date(+yr,+mo-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'})}</option>;})}
+            </select>
+          </div>
+          <div className="tn-div"/>
+          <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+            <span style={{color:'var(--subtle)',flexShrink:0}}><Ic n="sort" s={13}/></span>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="tn-select" style={{color:sortBy!=='terbaru'?'var(--brand)':'var(--muted)',borderColor:sortBy!=='terbaru'?'var(--brand)':'var(--border)',background:sortBy!=='terbaru'?'var(--brand-light)':'var(--surface)'}}>
+              <option value="terbaru">Terbaru</option>
+              <option value="terlama">Terlama</option>
+              <option value="tertinggi">Upah ↑</option>
+              <option value="terendah">Upah ↓</option>
+            </select>
+          </div>
+          <div className="tn-div"/>
+          <button className="btn btn-excel btn-sm" style={{flexShrink:0}} onClick={exportExcel}><Ic n="dl" s={12}/> Excel</button>
+          <button className="btn btn-gsheet btn-sm" style={{flexShrink:0}} onClick={()=>setShowGSheet(true)}><Ic n="sheet" s={12}/> G.Sheets</button>
+        </div>
+      </div>
+
+      {/* ════ CONTENT ════ */}
+      <div className="container" style={{paddingTop:20}}>
+
+        {/* ═══ BANNER DATA KOSONG ═══ */}
+      {history.length===0&&tab!=='grafik'&&tab!=='pegawai'&&tab!=='katalog'&&(
+        <div style={{background:'linear-gradient(135deg,#fef3c7,#fffbeb)',border:'1.5px solid #f59e0b',borderRadius:14,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:'1.4rem'}}>⚠️</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:900,fontSize:'.82rem',color:'#92400e',marginBottom:3}}>Data belum ada — file baru atau belum ada batch tersimpan</div>
+            <div style={{fontSize:'.7rem',color:'#b45309'}}>Jika Anda punya backup data dari versi sebelumnya, silakan <strong>Restore</strong> terlebih dahulu. Atau mulai input batch baru di tab Input.</div>
+          </div>
+          <button className="btn btn-sm" style={{background:'#f59e0b',color:'#fff',fontWeight:900,flexShrink:0}} onClick={()=>setShowRestore(true)}>
+            <Ic n="ul" s={12}/> Restore Data
+          </button>
+        </div>
+      )}
+
+      {/* ═══ TAB: INPUT ═══ */}
+        {tab==='input'&&(
+          <div className="card" style={{marginBottom:16}}>
+            <div className="card-head">
+              <div className="card-title">
+                {editItem ? <><Ic n="save" s={14}/> <span style={{color:'#d97706'}}>Edit Batch #{form.nomorBatch}</span></> : <><Ic n="plus" s={14}/> Input Batch Baru</>}
+              </div>
+              <div style={{display:'flex',gap:7}}>
+                {editItem&&<button type="button" className="btn btn-ghost btn-sm" onClick={()=>resetForm(true)}><Ic n="x" s={12}/> Batal</button>}
+                <button type="button" className="btn btn-ghost btn-sm" onClick={saveTemplate}><Ic n="tpl" s={12}/> Simpan Template</button>
+              </div>
+            </div>
+            {templates.length>0&&(
+              <div style={{padding:'8px 18px 0',borderBottom:'1px solid var(--border)'}}>
+                <div style={{fontSize:'.55rem',fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',color:'var(--muted)',marginBottom:5}}>Template:</div>
+                <div className="tpl-row">
+                  {templates.map(tpl=>(
+                    <div key={tpl.id} className="tpl-chip" onClick={()=>loadTemplate(tpl)}>
+                      <Ic n="tpl" s={10}/>{tpl.name}
+                      <span className="tpl-chip-del" onClick={e=>delTemplate(tpl.id,e)}>✕</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="card-body">
+              <form onSubmit={onSubmit}>
+                {/* ── Baris 1: Nama Barang + Batch + Tanggal ── */}
+                <div className="fg-row fg-2" style={{marginBottom:12}}>
+                  <div style={{gridColumn:'1/-1'}}>
+                    <label className="lbl" style={{display:'flex',alignItems:'center',gap:6}}>
+                      Produk / Nama Barang
+                      <span style={{background:'#059669',color:'#fff',fontSize:'.48rem',fontWeight:900,padding:'2px 6px',borderRadius:100,letterSpacing:'.06em'}}>KATALOG 2025</span>
+                    </label>
+                    <ProdukInput
+                      value={form.namaBarang}
+                      onChange={v => setForm(p=>({...p, namaBarang:v}))}
+                      katalog={katalog}
+                      onSelectProduk={produk => {
+                        const harga = (typeof produk.harga==='number'?produk.harga:parseFloat(String(produk.harga||0).replace(',','.'))||0).toFixed(2).replace('.',',');
+                        setForm(p=>({...p, namaBarang:produk.nama, hargaPerDus:harga}));
+                        toast(`✓ ${produk.nama} — Harga/Dus otomatis diisi`, 'success');
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="lbl">No. Batch</label>
+                    <input className="inp" name="nomorBatch" value={form.nomorBatch} onChange={onChange} placeholder="B-001" required style={{fontWeight:800,textAlign:'center'}}/>
+                  </div>
+                  <div>
+                    <label className="lbl">Tanggal</label>
+                    <input className="inp" type="date" name="tanggal" value={form.tanggal} onChange={onChange} required/>
+                  </div>
+                </div>
+
+                {/* ── Baris 2: Jam + Durasi + Orang ── */}
+                <div className="fg-row fg-3" style={{marginBottom:12,alignItems:'end'}}>
+                  <div><label className="lbl">Jam Mulai</label><input className="inp" type="time" name="jamAwal" value={form.jamAwal} onChange={onChange}/></div>
+                  <div><label className="lbl">Jam Akhir</label><input className="inp" type="time" name="jamAkhir" value={form.jamAkhir} onChange={onChange}/></div>
+                  <div><label className="lbl" style={{color:'#b45309'}}>Jam Efektif (override)</label><input className="inp inp-num inp-amber" name="jamEfektif" value={form.jamEfektif} onChange={onChange} placeholder="0,0"/></div>
+                  <div><label className="lbl" style={{color:'#6d28d9'}}>Jml Orang</label><input className="inp inp-num inp-purple" name="jumlahOrang" value={form.jumlahOrang} onChange={onChange} placeholder="0" required/></div>
+                  <div className="dur-pill"><div className="dur-label">Durasi</div><div className="dur-val">{durasi().toFixed(1)}<span className="dur-unit">jam</span></div></div>
+                </div>
+
+                {/* ── Baris: Jml Box + Hasil Dus ── */}
+                <div className="fg-row" style={{marginBottom:12,gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <label className="lbl" style={{color:'#1d4ed8'}}>Jml Box</label>
+                    <input className="inp inp-num inp-blue" name="jumlahBox" value={form.jumlahBox} onChange={onChange} placeholder="0"/>
+                  </div>
+                  <div>
+                    <label className="lbl" style={{color:'#059669'}}>
+                      Hasil Dus
+                      {(tdsActive||nonStandarActive) && (
+                        <span style={{marginLeft:5,display:'inline-flex',alignItems:'center',gap:2,padding:'1px 6px',background:'#f59e0b',color:'#fff',borderRadius:100,fontSize:'.46rem',fontWeight:900,letterSpacing:'.04em'}}>⚡ AUTO</span>
+                      )}
+                    </label>
+                    <input className="inp inp-num inp-green" name="jumlahDus" value={form.jumlahDus} onChange={onChange} placeholder="0"/>
+                  </div>
+                </div>
+
+                {/* ── Konversi Box → Dus — kotak tersendiri ── */}
+                <div style={{
+                  background:tdsActive?'linear-gradient(135deg,#fef3c7,#fffbeb)':'var(--surface)',
+                  border:tdsActive?'1.5px solid #f59e0b':'1.5px dashed var(--border)',
+                  borderRadius:12,padding:'12px 14px',marginBottom:10,
+                  transition:'all .2s'
+                }}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:tdsActive?10:8}}>
+                    <span style={{fontSize:'.9rem'}}>📦</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:'.58rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:tdsActive?'#b45309':'var(--muted)',lineHeight:1}}>Konversi Box → Dus</div>
+                      <div style={{fontSize:'.6rem',fontWeight:500,color:tdsActive?'#92400e':'var(--subtle)',marginTop:2}}>
+                        {tdsActive
+                          ? `${form.jumlahBox} box × ${form.tdsPerBox} = ${dusDariTds} dus (otomatis mengisi Hasil Dus)`
+                          : 'Isi nilai konversi jika ingin Hasil Dus dihitung otomatis dari Jml Box. Kosongkan jika isi manual.'}
+                      </div>
+                    </div>
+                    {tdsActive && (
+                      <button type="button" onClick={()=>setForm(p=>({...p,tdsPerBox:''}))}
+                        style={{background:'none',border:'1px solid #f59e0b',borderRadius:7,padding:'3px 9px',cursor:'pointer',fontSize:'.6rem',fontWeight:800,color:'#b45309',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                  <div style={{display:'flex',alignItems:'end',gap:10}}>
+                    <div style={{flex:'0 0 140px'}}>
+                      <label className="lbl" style={{color:tdsActive?'#b45309':'var(--muted)'}}>Nilai Konversi</label>
+                      <input
+                        className="inp inp-num"
+                        name="tdsPerBox"
+                        value={form.tdsPerBox}
+                        onChange={onChange}
+                        placeholder="kosong = tidak pakai"
+                        style={{
+                          color:tdsActive?'#78350f':'var(--inp-color)',
+                          background:tdsActive?'#fffbeb':'var(--inp-bg)',
+                          borderColor:tdsActive?'#f59e0b':'var(--inp-border)',
+                          fontSize:tdsActive?'1.2rem':'.85rem',
+                          fontWeight:tdsActive?900:600,
+                        }}
+                      />
+                    </div>
+                    {tdsActive && (
+                      <div style={{display:'flex',alignItems:'center',gap:8,paddingBottom:6,flex:1}}>
+                        <span style={{fontSize:'1.2rem',color:'#f59e0b',fontWeight:900}}>→</span>
+                        <div style={{background:'#f59e0b',borderRadius:10,padding:'8px 16px',textAlign:'center'}}>
+                          <div style={{fontSize:'.48rem',fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'rgba(255,255,255,.75)',marginBottom:1}}>Hasil</div>
+                          <div style={{fontSize:'1.4rem',fontWeight:900,color:'#fff',lineHeight:1}}>{dusDariTds}</div>
+                          <div style={{fontSize:'.52rem',fontWeight:700,color:'rgba(255,255,255,.8)'}}>dus</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Dus Tidak Standar — kotak tersendiri ── */}
+                <div style={{
+                  background:nonStandarActive?'linear-gradient(135deg,#f0fdf4,#dcfce7)':'var(--surface)',
+                  border:nonStandarActive?'1.5px solid #22c55e':'1.5px dashed var(--border)',
+                  borderRadius:12,padding:'12px 14px',marginBottom:12,
+                  transition:'all .2s'
+                }}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                    <span style={{fontSize:'.9rem'}}>➕</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:'.58rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:nonStandarActive?'#15803d':'var(--muted)',lineHeight:1}}>Dus Tidak Standar</div>
+                      <div style={{fontSize:'.6rem',fontWeight:500,color:nonStandarActive?'#166534':'var(--subtle)',marginTop:2}}>
+                        {nonStandarActive
+                          ? `+${dusNonStandarVal} dus tidak standar ditambahkan ke Hasil Dus`
+                          : 'Isi jika ada dus tidak standar yang perlu ditambahkan ke Hasil Dus.'}
+                      </div>
+                    </div>
+                    {nonStandarActive && (
+                      <div style={{background:'#22c55e',borderRadius:9,padding:'5px 12px',textAlign:'center',flexShrink:0}}>
+                        <div style={{fontSize:'.46rem',fontWeight:800,textTransform:'uppercase',color:'rgba(255,255,255,.8)',marginBottom:1}}>+Tambahan</div>
+                        <div style={{fontSize:'1.15rem',fontWeight:900,color:'#fff',lineHeight:1}}>{dusNonStandarVal} <span style={{fontSize:'.6rem',fontWeight:700}}>dus</span></div>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{display:'flex',alignItems:'end',gap:10}}>
+                    <div style={{flex:'0 0 160px'}}>
+                      <label className="lbl" style={{color:nonStandarActive?'#15803d':'var(--muted)'}}>Jml Dus Tidak Standar</label>
+                      <input
+                        className="inp inp-num"
+                        name="dusNonStandar"
+                        value={form.dusNonStandar}
+                        onChange={onChange}
+                        placeholder="kosong = tidak ada"
+                        style={{
+                          color:nonStandarActive?'#14532d':'var(--inp-color)',
+                          background:nonStandarActive?'#f0fdf4':'var(--inp-bg)',
+                          borderColor:nonStandarActive?'#22c55e':'var(--inp-border)',
+                          fontSize:nonStandarActive?'1.2rem':'.85rem',
+                          fontWeight:nonStandarActive?900:600,
+                        }}
+                      />
+                    </div>
+                    {nonStandarActive && (tdsActive || parseInt(form.jumlahDus)>0) && (
+                      <div style={{paddingBottom:6,fontSize:'.68rem',fontWeight:600,color:'#15803d',display:'flex',alignItems:'center',gap:5,flex:1}}>
+                        <span style={{fontSize:'1rem'}}>🧮</span>
+                        <span>
+                          {tdsActive ? `${dusDariTds} (TDS)` : `${parseInt(form.jumlahDus)||0} (manual)`}
+                          {' '}+{' '}{dusNonStandarVal}{' '}
+                          = <strong style={{color:'#14532d',fontSize:'.8rem'}}>{totalDusAuto} dus</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Baris: Harga Jam + Harga Dus ── */}
+                <div className="fg-row" style={{marginBottom:12,gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div><label className="lbl" style={{color:'#1d4ed8'}}>Rp / Jam (flat)</label><input className="inp inp-num inp-blue" name="hargaPerJam" value={form.hargaPerJam} onChange={onChange} placeholder="0"/></div>
+                  <div><label className="lbl" style={{color:'#059669'}}>Rp / Dus (bagi)</label><input className="inp inp-num inp-green" name="hargaPerDus" value={form.hargaPerDus} onChange={onChange} placeholder="0"/></div>
+                </div>
+
+                <div style={{marginBottom:12}}>
+                  <label className="lbl">Catatan (opsional)</label>
+                  <input className="inp" name="catatan" value={form.catatan} onChange={onChange} placeholder="Tambahan info..." style={{fontSize:'.875rem'}}/>
+                </div>
+
+                {form.daftarPegawai.length>0&&(
+                  <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:14,marginBottom:14}}>
+                    <div className="card-title" style={{marginBottom:10}}><Ic n="users" s={13}/> Nama Pegawai ({form.daftarPegawai.length})</div>
+                    <div className="pegawai-grid">
+                      {form.daftarPegawai.map((n,i)=>(
+                        <div key={i} className="peg-wrap">
+                          <span className="peg-num">{i+1}</span>
+                          <PegawaiInput value={n} onChange={v=>onPeg(i,v)} placeholder={`Pegawai ${i+1}`} allNames={allNames}/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="calc-bar">
+                  <div>
+                    <div className="calc-est">Estimasi Upah Per Orang</div>
+                    <div className="calc-amount">{fRp(live.perOrang)}</div>
+                    <div className="calc-breakdown">
+                      <span className="calc-item">Jam: <strong style={{color:'#60a5fa'}}>{fRp(live.jamPerOrang)}</strong></span>
+                      <span className="calc-item">Dus: <strong style={{color:'#34d399'}}>{fRp(live.dusPerOrang)}</strong></span>
+                      <span className="calc-item">Total: <strong style={{color:'#fbbf24'}}>{fRp(live.total)}</strong></span>
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading} className="btn btn-primary btn-full" style={{maxWidth:'none',background:editItem?'#d97706':undefined}}>
+                    {loading?<><Spin s={15}/> {editItem?'Mengupdate...':'Menyimpan...'}</>:<><Ic n="save" s={15}/> {editItem?'Update Batch':'Simpan Batch'}</>}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB: LOG ═══ */}
+        {tab==='log'&&(
+          <div className="card">
+            <div className="card-head">
+              <div className="card-title"><Ic n="list" s={14}/> Log Produksi <span className="badge badge-blue">{filtHist.length}</span>
+                {activeFilters>0&&<span className="badge badge-amber">{activeFilters} filter aktif</span>}
+              </div>
+              {history.length>0&&<button className="btn btn-danger btn-sm" onClick={()=>setShowConfirmClear(true)}><Ic n="trash" s={12}/> Hapus Semua</button>}
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Batch & Produk</th><th>Waktu</th><th className="text-right">Upah / Orang</th><th>Anggota</th><th style={{textAlign:'center'}}>Aksi</th></tr></thead>
+                <tbody>
+                  {filtHist.length===0?<tr><td colSpan="5" className="empty">{history.length===0?'Belum ada data. Mulai input batch!':'Tidak ada hasil.'}</td></tr>
+                  :filtHist.map(item=>(
+                    <React.Fragment key={item.id}>
+                      <tr className={expandedId===item.id?'expanded':''} onClick={()=>setExpandedId(expandedId===item.id?null:item.id)}>
+                        <td>
+                          <div style={{fontWeight:800,fontSize:'.86rem',color:'var(--ink)',textTransform:'uppercase',marginBottom:2}}>{item.namaBarang}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap',marginBottom:5}}>
+                            <span className="badge badge-slate">#{item.nomorBatch}</span>
+                            <span style={{fontSize:'.66rem',color:'var(--muted)',fontWeight:600}}>{item.tanggal}</span>
+                          </div>
+                          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                            <span className="badge badge-slate"><Ic n="box" s={8}/> {item.jumlahBox||0} Box</span>
+                            <span className="badge badge-green"><Ic n="box" s={8}/> {item.jumlahDus||0} Dus</span>
+                            {item.tdsPerBox&&<span className="badge badge-amber">Konversi {item.tdsPerBox}</span>}
+                            {item.dusNonStandar&&<span className="badge badge-green">+{item.dusNonStandar} Non-std</span>}
+                          </div>
+                        </td>
+                        <td style={{whiteSpace:'nowrap'}}>
+                          <div style={{fontSize:'.73rem',fontWeight:700,color:'var(--muted)'}}>{item.jamAwal||'--:--'} – {item.jamAkhir||'--:--'}</div>
+                          <div style={{fontSize:'.78rem',fontWeight:800,color:'#0369a1',marginTop:2,display:'flex',alignItems:'center',gap:3}}><Ic n="clock" s={10}/>{(item.durasi||0).toFixed(1)} jam</div>
+                        </td>
+                        <td className="text-right" style={{whiteSpace:'nowrap'}}>
+                          <div style={{fontSize:'.95rem',fontWeight:900,color:'var(--ink)'}}>{fRp(item.perOrang)}</div>
+                          <div style={{fontSize:'.6rem',color:'var(--subtle)',marginTop:1}}>
+                            <span style={{color:'#3b82f6'}}>J:{fRp(item.jamPerOrang)}</span> <span style={{color:'#059669'}}>D:{fRp(item.dusPerOrang)}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{display:'flex',flexWrap:'wrap',gap:3,maxWidth:200}}>
+                            {(item.listPegawai||[]).slice(0,4).map((p,i)=><span key={i} className={`badge ${search&&p.toLowerCase().includes(search.toLowerCase())?'badge-hit':'badge-slate'}`}>{p}</span>)}
+                            {item.listPegawai.length>4&&<span className="badge badge-amber">+{item.listPegawai.length-4}</span>}
+                          </div>
+                        </td>
+                        <td style={{textAlign:'center'}}>
+                          <div style={{display:'flex',gap:3,justifyContent:'center'}}>
+                            <button type="button" className="btn btn-sm" style={{padding:'5px 10px',background:'#d97706',color:'#fff',borderRadius:8,fontWeight:800,fontSize:'.68rem',display:'flex',alignItems:'center',gap:4}} onClick={e=>openEditLog(item,e)} title="Edit Batch"><Ic n="save" s={12}/> Edit</button>
+                            <button type="button" className="btn btn-danger btn-sm" style={{padding:'5px 7px'}} onClick={e=>{e.stopPropagation();setConfirmDeleteId(item.id);}} title="Hapus"><Ic n="trash" s={12}/></button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* ── INLINE EDIT PANEL ── */}
+                      {editLogId===item.id&&editLogForm&&(
+                        <tr className="expand-row"><td colSpan="5">
+                          <div style={{padding:'16px 18px',background:'var(--surface)',borderBottom:'2px solid #d97706',borderLeft:'3px solid #d97706'}}>
+                            {/* Header */}
+                            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                              <div style={{width:32,height:32,background:'#fef3c7',borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',color:'#d97706',flexShrink:0}}><Ic n="save" s={15}/></div>
+                              <div style={{flex:1}}>
+                                <div style={{fontWeight:900,fontSize:'.82rem',color:'#d97706'}}>Edit Batch #{editLogForm.nomorBatch}</div>
+                                <div style={{fontSize:'.62rem',color:'var(--muted)',fontWeight:500}}>Ubah data batch ini langsung dari log</div>
+                              </div>
+                              <button type="button" className="btn btn-ghost btn-sm" style={{padding:'4px 8px'}} onClick={()=>{setEditLogId(null);setEditLogForm(null);}}><Ic n="x" s={13}/> Batal</button>
+                            </div>
+
+                            {/* Baris 1: Nama Barang + No Batch + Tanggal */}
+                            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:10,marginBottom:10}}>
+                              <div><label className="lbl">Nama Barang</label><input className="inp" name="namaBarang" value={editLogForm.namaBarang} onChange={onEditLogChange} style={{fontWeight:700}} required/></div>
+                              <div><label className="lbl">No. Batch</label><input className="inp" name="nomorBatch" value={editLogForm.nomorBatch} onChange={onEditLogChange} style={{fontWeight:800,textAlign:'center'}} required/></div>
+                              <div><label className="lbl">Tanggal</label><input className="inp" type="date" name="tanggal" value={editLogForm.tanggal} onChange={onEditLogChange} required/></div>
+                            </div>
+
+                            {/* Baris 2: Jam + Durasi + Orang */}
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr auto',gap:10,marginBottom:10,alignItems:'end'}}>
+                              <div><label className="lbl">Jam Mulai</label><input className="inp" type="time" name="jamAwal" value={editLogForm.jamAwal||''} onChange={onEditLogChange}/></div>
+                              <div><label className="lbl">Jam Akhir</label><input className="inp" type="time" name="jamAkhir" value={editLogForm.jamAkhir||''} onChange={onEditLogChange}/></div>
+                              <div><label className="lbl" style={{color:'#b45309'}}>Jam Efektif</label><input className="inp inp-num inp-amber" name="jamEfektif" value={editLogForm.jamEfektif||''} onChange={onEditLogChange} placeholder="0,0"/></div>
+                              <div><label className="lbl" style={{color:'#6d28d9'}}>Jml Orang</label><input className="inp inp-num inp-purple" name="jumlahOrang" value={editLogForm.jumlahOrang||''} onChange={onEditLogChange} placeholder="0"/></div>
+                              <div className="dur-pill">
+                                <div className="dur-label">Durasi</div>
+                                <div className="dur-val">{(()=>{const f=editLogForm;if(f.jamEfektif)return toF(f.jamEfektif).toFixed(1);if(!f.jamAwal||!f.jamAkhir)return'0.0';const a=new Date(`2000-01-01T${f.jamAwal}`),b=new Date(`2000-01-01T${f.jamAkhir}`);let d=(b-a)/3600000;if(d<0)d+=24;return d.toFixed(1);})()}<span className="dur-unit">jam</span></div>
+                              </div>
+                            </div>
+
+                            {/* Baris 3: Box + Hasil Dus */}
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                              <div><label className="lbl" style={{color:'#1d4ed8'}}>Jml Box</label><input className="inp inp-num inp-blue" name="jumlahBox" value={editLogForm.jumlahBox||''} onChange={onEditLogChange} placeholder="0"/></div>
+                              <div>
+                                <label className="lbl" style={{color:'#059669'}}>
+                                  Hasil Dus
+                                  {((parseInt(editLogForm.tdsPerBox)||0)>0||(parseInt(editLogForm.dusNonStandar)||0)>0)&&<span style={{marginLeft:4,padding:'1px 5px',background:'#f59e0b',color:'#fff',borderRadius:100,fontSize:'.44rem',fontWeight:900}}>⚡AUTO</span>}
+                                </label>
+                                <input className="inp inp-num inp-green" name="jumlahDus" value={editLogForm.jumlahDus||''} onChange={onEditLogChange} placeholder="0"/>
+                              </div>
+                            </div>
+
+                            {/* Konversi Box → Dus */}
+                            <div style={{background:(parseInt(editLogForm.tdsPerBox)||0)>0?'#fffbeb':'var(--surface)',border:(parseInt(editLogForm.tdsPerBox)||0)>0?'1.5px solid #f59e0b':'1.5px dashed var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8,transition:'all .2s'}}>
+                              <div style={{fontSize:'.56rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:(parseInt(editLogForm.tdsPerBox)||0)>0?'#b45309':'var(--muted)',marginBottom:7}}>📦 Konversi Box → Dus</div>
+                              <div style={{display:'flex',alignItems:'end',gap:10}}>
+                                <div style={{flex:'0 0 130px'}}><label className="lbl" style={{color:(parseInt(editLogForm.tdsPerBox)||0)>0?'#b45309':'var(--muted)'}}>Nilai Konversi</label><input className="inp inp-num" name="tdsPerBox" value={editLogForm.tdsPerBox||''} onChange={onEditLogChange} placeholder="kosong = tidak pakai" style={{fontSize:(parseInt(editLogForm.tdsPerBox)||0)>0?'1.1rem':'.82rem',fontWeight:(parseInt(editLogForm.tdsPerBox)||0)>0?900:600,color:(parseInt(editLogForm.tdsPerBox)||0)>0?'#78350f':'var(--inp-color)',background:(parseInt(editLogForm.tdsPerBox)||0)>0?'#fffbeb':'var(--inp-bg)',borderColor:(parseInt(editLogForm.tdsPerBox)||0)>0?'#f59e0b':'var(--inp-border)'}}/></div>
+                                {(parseInt(editLogForm.tdsPerBox)||0)>0&&(parseInt(editLogForm.jumlahBox)||0)>0&&(
+                                  <div style={{paddingBottom:4,fontSize:'.7rem',fontWeight:700,color:'#b45309'}}>
+                                    {editLogForm.jumlahBox} × {editLogForm.tdsPerBox} = <strong style={{color:'#78350f'}}>{(parseInt(editLogForm.jumlahBox)||0)*(parseInt(editLogForm.tdsPerBox)||0)} dus</strong>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Dus Tidak Standar */}
+                            <div style={{background:(parseInt(editLogForm.dusNonStandar)||0)>0?'#f0fdf4':'var(--surface)',border:(parseInt(editLogForm.dusNonStandar)||0)>0?'1.5px solid #22c55e':'1.5px dashed var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:10,transition:'all .2s'}}>
+                              <div style={{fontSize:'.56rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:(parseInt(editLogForm.dusNonStandar)||0)>0?'#15803d':'var(--muted)',marginBottom:7}}>➕ Dus Tidak Standar</div>
+                              <div style={{flex:'0 0 130px'}}><label className="lbl" style={{color:(parseInt(editLogForm.dusNonStandar)||0)>0?'#15803d':'var(--muted)'}}>Jml Dus Tidak Standar</label><input className="inp inp-num" name="dusNonStandar" value={editLogForm.dusNonStandar||''} onChange={onEditLogChange} placeholder="kosong = tidak ada" style={{fontSize:(parseInt(editLogForm.dusNonStandar)||0)>0?'1.1rem':'.82rem',fontWeight:(parseInt(editLogForm.dusNonStandar)||0)>0?900:600,color:(parseInt(editLogForm.dusNonStandar)||0)>0?'#14532d':'var(--inp-color)',background:(parseInt(editLogForm.dusNonStandar)||0)>0?'#f0fdf4':'var(--inp-bg)',borderColor:(parseInt(editLogForm.dusNonStandar)||0)>0?'#22c55e':'var(--inp-border)'}}/></div>
+                            </div>
+
+                            {/* Harga */}
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                              <div><label className="lbl" style={{color:'#1d4ed8'}}>Rp / Jam (flat)</label><input className="inp inp-num inp-blue" name="hargaPerJam" value={editLogForm.hargaPerJam||''} onChange={onEditLogChange} placeholder="0"/></div>
+                              <div><label className="lbl" style={{color:'#059669'}}>Rp / Dus (bagi)</label><input className="inp inp-num inp-green" name="hargaPerDus" value={editLogForm.hargaPerDus||''} onChange={onEditLogChange} placeholder="0"/></div>
+                            </div>
+
+                            {/* Daftar Pegawai */}
+                            {(editLogForm.daftarPegawai||[]).length>0&&(
+                              <div style={{background:'var(--card-bg)',border:'1px solid var(--border)',borderRadius:10,padding:12,marginBottom:10}}>
+                                <div className="card-title" style={{marginBottom:9,fontSize:'.6rem'}}><Ic n="users" s={12}/> Nama Pegawai ({(editLogForm.daftarPegawai||[]).length})</div>
+                                <div className="pegawai-grid">
+                                  {(editLogForm.daftarPegawai||[]).map((n,i)=>(
+                                    <div key={i} className="peg-wrap">
+                                      <span className="peg-num">{i+1}</span>
+                                      <PegawaiInput value={n} onChange={v=>onEditLogPeg(i,v)} placeholder={`Pegawai ${i+1}`} allNames={allNames}/>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Catatan */}
+                            <div style={{marginBottom:12}}>
+                              <label className="lbl">Catatan</label>
+                              <input className="inp" name="catatan" value={editLogForm.catatan||''} onChange={onEditLogChange} placeholder="Tambahan info..." style={{fontSize:'.875rem'}}/>
+                            </div>
+
+                            {/* Live preview + Simpan */}
+                            {(()=>{const u=calcFor(editLogForm);return(
+                              <div style={{background:'linear-gradient(135deg,#0a0f1e,#0d1b40)',borderRadius:12,padding:'12px 16px',display:'flex',flexDirection:'column',gap:10}}>
+                                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+                                  <div>
+                                    <div style={{color:'rgba(255,255,255,.4)',fontSize:'.52rem',fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:2}}>Preview Upah / Orang</div>
+                                    <div style={{fontSize:'1.5rem',fontWeight:900,color:'#fb923c',letterSpacing:'-.02em'}}>{fRp(u.perOrang)}</div>
+                                    <div style={{display:'flex',gap:10,marginTop:2}}>
+                                      <span style={{fontSize:'.6rem',color:'rgba(255,255,255,.4)'}}>Jam: <strong style={{color:'#60a5fa'}}>{fRp(u.jamPerOrang)}</strong></span>
+                                      <span style={{fontSize:'.6rem',color:'rgba(255,255,255,.4)'}}>Dus: <strong style={{color:'#34d399'}}>{fRp(u.dusPerOrang)}</strong></span>
+                                      <span style={{fontSize:'.6rem',color:'rgba(255,255,255,.4)'}}>Total: <strong style={{color:'#fbbf24'}}>{fRp(u.total)}</strong></span>
+                                    </div>
+                                  </div>
+                                  <button type="button" className="btn btn-primary" style={{background:'#d97706',padding:'11px 24px',fontSize:'.8rem'}} onClick={saveEditLog}>
+                                    <Ic n="save" s={15}/> Simpan Perubahan
+                                  </button>
+                                </div>
+                              </div>
+                            );})()}
+                          </div>
+                        </td></tr>
+                      )}
+
+                      {/* ── DETAIL VIEW (expand biasa) ── */}
+                      {expandedId===item.id&&editLogId!==item.id&&(
+                        <tr className="expand-row"><td colSpan="5">
+                          <div className="expand-inner">
+                            <div className="exp-grid">
+                              <div className="exp-box">
+                                <div className="exp-lbl">Detail Upah</div>
+                                <div className="exp-row"><span>Harga/Jam:</span> Rp {toF(item.hargaPerJam).toLocaleString('id-ID')}</div>
+                                <div className="exp-row"><span>Harga/Dus:</span> Rp {toF(item.hargaPerDus).toLocaleString('id-ID')}</div>
+                                <div className="exp-row"><span>Total Batch:</span> {fRp(item.total)}</div>
+                                <div className="exp-row"><span>Jml Orang:</span> {item.jumlahOrang||0}</div>
+                                <div className="exp-row"><span>Jml Box:</span> {item.jumlahBox||0}</div>
+                                <div className="exp-row"><span>Jml Dus:</span> {item.jumlahDus||0}</div>
+                                {item.tdsPerBox&&<div className="exp-row"><span>Konversi Box→Dus:</span> {item.tdsPerBox}</div>}
+                                {item.dusNonStandar&&<div className="exp-row"><span>Dus Tidak Standar:</span> +{item.dusNonStandar}</div>}
+                              </div>
+                              <div className="exp-box">
+                                <div className="exp-lbl">Semua Anggota ({(item.listPegawai||[]).length})</div>
+                                <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>{(item.listPegawai||[]).map((p,i)=><span key={i} className="badge badge-slate">{p}</span>)}</div>
+                                <div style={{display:'flex',flexWrap:'wrap',gap:5}}>{(item.listPegawai||[]).map((p,i)=><button key={i} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'4px 9px',background:'linear-gradient(135deg,#1d4ed8,#2563eb)',color:'#fff',border:'none',borderRadius:7,fontFamily:'inherit',fontWeight:800,fontSize:'.6rem',cursor:'pointer'}} onClick={e=>{e.stopPropagation();setSlipGajiPegawai(p);}}>📄 {p.length>12?p.slice(0,12)+'...':p}</button>)}</div>
+                              </div>
+                              <div className="exp-box">
+                                <div className="exp-lbl">Catatan</div>
+                                <p style={{fontSize:'.8rem',color:item.catatan?'var(--ink)':'var(--subtle)',fontStyle:item.catatan?'normal':'italic',lineHeight:1.5}}>{item.catatan||'Tidak ada catatan.'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </td></tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB: PEGAWAI ═══ */}
+        {tab==='pegawai'&&(
+          <div>
+            <div className="section-head">
+              <div className="card-title"><Ic n="users" s={14}/> Akumulasi Per Pegawai <span className="badge badge-blue">{filtAku.length}</span></div>
+              <button className="btn btn-ghost btn-sm" onClick={()=>{const t=akumulasi.map(p=>`${p.nama}: ${fRp(p.totalSemua)} (${p.batchCount} batch)`).join('\n');navigator.clipboard.writeText(t).then(()=>toast('Data gaji disalin!','success'));}}><Ic n="copy" s={12}/> Salin</button>
+            </div>
+            {akumulasi[0]&&!search&&(
+              <div className="top-banner">
+                <div className="top-crown"><Ic n="award" s={24}/><div style={{marginTop:3}}>Top Earner</div></div>
+                <div className="top-info"><div className="top-name">{akumulasi[0].nama}</div><div className="top-sub">{akumulasi[0].batchCount} batch</div></div>
+                <div className="top-amount"><div className="top-amount-lbl">Total Gaji</div><div className="top-amount-val">{fRp(akumulasi[0].totalSemua)}</div></div>
+              </div>
+            )}
+            <div className="peg-cards">
+              {filtAku.length===0?<div className="empty" style={{gridColumn:'1/-1'}}>{akumulasi.length===0?'Belum ada data pegawai.':'Tidak ditemukan.'}</div>
+              :filtAku.map((p,i)=>{
+                const isActive=search&&p.nama.toLowerCase().includes(search.toLowerCase());
+                const pct=Math.round((p.totalSemua/maxGaji)*100);
+                return(
+                  <div key={i} className={`peg-card ${isActive?'active':''}`}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                      <div><div className="peg-name">{p.nama}</div><div className="peg-meta">{i===0&&!search?'👑 ':''}{p.batchCount} batch · #{i+1}</div></div>
+                    </div>
+                    <div className="peg-stats">
+                      <div className="peg-stat"><div className="peg-stat-lbl" style={{color:'#93c5fd'}}>Upah Jam</div><div className="peg-stat-val" style={{color:'#60a5fa'}}>{fRp(p.totalJam)}</div></div>
+                      <div className="peg-stat"><div className="peg-stat-lbl" style={{color:'#6ee7b7'}}>Upah Dus</div><div className="peg-stat-val" style={{color:'#34d399'}}>{fRp(p.totalDus)}</div></div>
+                    </div>
+                    <div className="progress"><div className="progress-fill" style={{width:`${pct}%`}}/></div>
+                    <div className="peg-total-row"><span className="peg-total-lbl">Total Gaji</span><span className="peg-total-val">{fRp(p.totalSemua)}</span></div>
+                    <button className="slip-btn" onClick={()=>setSlipGajiPegawai(p.nama)}>
+                      📄 Lihat Slip Gaji
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB: KATALOG PRODUK ═══ */}
+        {tab==='katalog'&&(
+          <div>
+            {/* Header + Tambah */}
+            <div className="card" style={{marginBottom:12,padding:'14px 16px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                <div style={{width:36,height:36,background:'linear-gradient(135deg,#0ea5e9,#6366f1)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',flexShrink:0}}>
+                  <Ic n="tag" s={18}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:900,fontSize:'.9rem'}}>Katalog Produk</div>
+                  <div style={{fontSize:'.65rem',color:'var(--subtle)'}}>{katalog.length} produk tersimpan · Harga per Dus</div>
+                </div>
+                <button className="btn btn-primary btn-sm" style={{flexShrink:0,gap:5}} onClick={()=>{setAddProdukForm({nama:'',harga:''});setShowAddProduk(true);}}>
+                  <Ic n="plus" s={13}/> Tambah
+                </button>
+              </div>
+              {/* Search */}
+              <div style={{position:'relative'}}>
+                <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--subtle)',pointerEvents:'none'}}><Ic n="search" s={14}/></span>
+                <input className="inp" value={katalogSearch} onChange={e=>setKatalogSearch(e.target.value)} placeholder="Cari produk..." style={{paddingLeft:32}}/>
+              </div>
+            </div>
+
+            {/* Table produk */}
+            <div className="card" style={{padding:0,overflow:'hidden'}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:0}}>
+                {/* Header */}
+                <div style={{padding:'9px 14px',fontSize:'.6rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--subtle)',borderBottom:'1px solid var(--border)',background:'var(--surface-2)'}}>Nama Produk</div>
+                <div style={{padding:'9px 14px',fontSize:'.6rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--subtle)',borderBottom:'1px solid var(--border)',background:'var(--surface-2)',textAlign:'right',whiteSpace:'nowrap'}}>Harga/Dus</div>
+                <div style={{padding:'9px 14px',fontSize:'.6rem',fontWeight:900,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--subtle)',borderBottom:'1px solid var(--border)',background:'var(--surface-2)',textAlign:'center'}}>Aksi</div>
+                {/* Rows */}
+                {katalog
+                  .map((p,realIdx)=>({p,realIdx}))
+                  .filter(({p})=>!katalogSearch.trim()||p.nama.toLowerCase().includes(katalogSearch.trim().toLowerCase()))
+                  .map(({p,realIdx},i,arr)=>{
+                    const hargaNum = typeof p.harga==='number' ? p.harga : parseFloat(String(p.harga).replace(',','.')) || 0;
+                    return (
+                      <React.Fragment key={realIdx}>
+                        <div style={{padding:'10px 14px',fontSize:'.77rem',fontWeight:600,borderBottom:i<arr.length-1?'1px solid var(--border)':'none',display:'flex',alignItems:'center',gap:7}}>
+                          <span style={{width:22,height:22,background:'var(--surface-2)',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'.55rem',fontWeight:900,color:'var(--subtle)'}}>{realIdx+1}</span>
+                          {p.nama}
+                        </div>
+                        <div style={{padding:'10px 14px',fontSize:'.77rem',fontWeight:800,color:'#059669',borderBottom:i<arr.length-1?'1px solid var(--border)':'none',textAlign:'right',whiteSpace:'nowrap'}}>
+                          Rp {hargaNum.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}
+                        </div>
+                        <div style={{padding:'10px 8px',borderBottom:i<arr.length-1?'1px solid var(--border)':'none',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                          <button className="btn btn-ghost btn-sm" style={{padding:'5px 7px',color:'#3b82f6'}} title="Edit"
+                            onClick={()=>setEditProduk({idx:realIdx, nama:p.nama, harga:hargaNum.toFixed(2).replace('.',',')})}>
+                            <Ic n="edit" s={13}/>
+                          </button>
+                          <button className="btn btn-ghost btn-sm" style={{padding:'5px 7px',color:'#ef4444'}} title="Hapus"
+                            onClick={()=>{
+                              if(confirm(`Hapus produk "${p.nama}"?`)){
+                                setKatalog(prev=>prev.filter((_,j)=>j!==realIdx));
+                                toast(`Produk "${p.nama}" dihapus`,'success');
+                              }
+                            }}>
+                            <Ic n="trash" s={13}/>
+                          </button>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
+                }
+                {katalog.filter(p=>!katalogSearch.trim()||p.nama.toLowerCase().includes(katalogSearch.trim().toLowerCase())).length===0&&(
+                  <div style={{gridColumn:'1/-1',padding:'24px',textAlign:'center',color:'var(--subtle)',fontSize:'.78rem'}}>
+                    {katalogSearch.trim() ? `Produk "${katalogSearch}" tidak ditemukan.` : 'Katalog kosong. Tambahkan produk baru.'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Reset ke default */}
+            <div style={{marginTop:12,textAlign:'center'}}>
+              <button className="btn btn-ghost btn-sm" style={{fontSize:'.62rem',color:'var(--subtle)'}}
+                onClick={()=>{if(confirm('Reset katalog ke data bawaan (50 produk default)? Semua perubahan akan hilang.')){setKatalog(KATALOG_DEFAULT);toast('Katalog direset ke data default','success');}}}>
+                <Ic n="sync" s={11}/> Reset ke Katalog Default
+              </button>
+            </div>
+
+            {/* Modal Edit Produk */}
+            {editProduk&&(
+              <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)setEditProduk(null);}}>
+                <div className="modal" style={{maxWidth:380,padding:'22px 24px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
+                    <div style={{width:36,height:36,background:'linear-gradient(135deg,#3b82f6,#6366f1)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',flexShrink:0}}><Ic n="edit" s={17}/></div>
+                    <div style={{flex:1}}><h2 style={{margin:0,fontSize:'.9rem',fontWeight:900,textAlign:'left'}}>Edit Produk</h2><div style={{fontSize:'.63rem',color:'var(--subtle)'}}>Ubah nama dan harga per dus</div></div>
+                    <button className="btn btn-ghost btn-sm" style={{padding:'5px'}} onClick={()=>setEditProduk(null)}><Ic n="x" s={15}/></button>
+                  </div>
+                  <div style={{marginBottom:14}}>
+                    <label className="lbl">Nama Produk</label>
+                    <input className="inp" value={editProduk.nama} onChange={e=>setEditProduk(p=>({...p,nama:e.target.value}))} placeholder="Nama produk..."/>
+                  </div>
+                  <div style={{marginBottom:20}}>
+                    <label className="lbl">Harga per Dus (Rp)</label>
+                    <div style={{position:'relative'}}>
+                      <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',fontSize:'.72rem',fontWeight:700,color:'var(--subtle)'}}>Rp</span>
+                      <input className="inp" value={editProduk.harga} onChange={e=>setEditProduk(p=>({...p,harga:cleanN(e.target.value)}))} placeholder="0,00" style={{paddingLeft:30,fontWeight:800,fontSize:'1rem',color:'#059669'}}/>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setEditProduk(null)}>Batal</button>
+                    <button className="btn btn-primary" style={{flex:2}} onClick={()=>{
+                      if(!editProduk.nama.trim()){toast('Nama produk tidak boleh kosong','error');return;}
+                      const h=toF(editProduk.harga);
+                      if(!h){toast('Harga tidak valid','error');return;}
+                      setKatalog(prev=>prev.map((p,i)=>i===editProduk.idx?{nama:editProduk.nama.trim(),harga:h}:p));
+                      toast(`"${editProduk.nama.trim()}" berhasil diperbarui`,'success');
+                      setEditProduk(null);
+                    }}><Ic n="save" s={14}/> Simpan</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Tambah Produk */}
+            {showAddProduk&&(
+              <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)setShowAddProduk(false);}}>
+                <div className="modal" style={{maxWidth:380,padding:'22px 24px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
+                    <div style={{width:36,height:36,background:'linear-gradient(135deg,#059669,#0ea5e9)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',flexShrink:0}}><Ic n="plus" s={17}/></div>
+                    <div style={{flex:1}}><h2 style={{margin:0,fontSize:'.9rem',fontWeight:900,textAlign:'left'}}>Tambah Produk Baru</h2><div style={{fontSize:'.63rem',color:'var(--subtle)'}}>Akan muncul di dropdown saat input batch</div></div>
+                    <button className="btn btn-ghost btn-sm" style={{padding:'5px'}} onClick={()=>setShowAddProduk(false)}><Ic n="x" s={15}/></button>
+                  </div>
+                  <div style={{marginBottom:14}}>
+                    <label className="lbl">Nama Produk</label>
+                    <input className="inp" value={addProdukForm.nama} onChange={e=>setAddProdukForm(p=>({...p,nama:e.target.value}))} placeholder="Nama produk baru..."/>
+                  </div>
+                  <div style={{marginBottom:20}}>
+                    <label className="lbl">Harga per Dus (Rp)</label>
+                    <div style={{position:'relative'}}>
+                      <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',fontSize:'.72rem',fontWeight:700,color:'var(--subtle)'}}>Rp</span>
+                      <input className="inp" value={addProdukForm.harga} onChange={e=>setAddProdukForm(p=>({...p,harga:cleanN(e.target.value)}))} placeholder="0,00" style={{paddingLeft:30,fontWeight:800,fontSize:'1rem',color:'#059669'}}/>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setShowAddProduk(false)}>Batal</button>
+                    <button className="btn btn-primary" style={{flex:2,background:'#059669'}} onClick={()=>{
+                      if(!addProdukForm.nama.trim()){toast('Nama produk tidak boleh kosong','error');return;}
+                      const h=toF(addProdukForm.harga);
+                      if(!h){toast('Harga tidak valid','error');return;}
+                      const duplikat=katalog.some(p=>p.nama.toLowerCase()===addProdukForm.nama.trim().toLowerCase());
+                      if(duplikat){toast('Produk dengan nama ini sudah ada','error');return;}
+                      setKatalog(prev=>[...prev,{nama:addProdukForm.nama.trim(),harga:h}].sort((a,b)=>a.nama.localeCompare(b.nama)));
+                      toast(`"${addProdukForm.nama.trim()}" ditambahkan ke katalog`,'success');
+                      setShowAddProduk(false);
+                      setAddProdukForm({nama:'',harga:''});
+                    }}><Ic n="plus" s={14}/> Tambah</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ TAB: CHART ═══ */}
+        {tab==='chart'&&(
+          <div>
+            {history.length===0?(
+              <div className="card"><div className="empty">Belum ada data untuk grafik.</div></div>
+            ):(
+              <>
+                <div className="chart-grid">
+                  <div className="chart-box">
+                    <div className="chart-title"><Ic n="chart" s={13}/> Total Gaji per Bulan</div>
+                    <div className="chart-wrap">{chartBulanan.length>0?<ChartBar data={chartBulanan} color="#2563eb"/>:<div className="empty" style={{padding:'24px 0'}}>Belum cukup data</div>}</div>
+                  </div>
+                  <div className="chart-box">
+                    <div className="chart-title"><Ic n="users" s={13}/> Distribusi Gaji Top 6</div>
+                    <div className="chart-wrap">{chartPegawai.length>0?<ChartDoughnut data={chartPegawai}/>:<div className="empty" style={{padding:'24px 0'}}>Belum ada data</div>}</div>
+                  </div>
+                </div>
+                <div className="chart-grid">
+                  <div className="chart-box">
+                    <div className="chart-title"><Ic n="award" s={13}/> Ranking Upah Pegawai</div>
+                    <div className="chart-wrap"><ChartBar data={akumulasi.slice(0,8).map(p=>({label:p.nama.slice(0,10),val:p.totalSemua}))} color="#059669"/></div>
+                  </div>
+                  <div className="chart-box">
+                    <div className="chart-title"><Ic n="box" s={13}/> Statistik Ringkas</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginTop:2}}>
+                      {[
+                        {l:'Total Batch',v:stats.totalBatch,c:'#2563eb',icon:'📋'},
+                        {l:'Total Pegawai',v:stats.totalPegawai,c:'#059669',icon:'👥'},
+                        {l:'Total Gaji',v:fRp(stats.totalGaji),c:'#f59e0b',icon:'💰'},
+                        {l:'Avg/Orang',v:fRp(stats.avgPerOrang),c:'#e11d48',icon:'📊'},
+                        {l:'Avg/Batch',v:fRp(history.length>0?stats.totalGaji/history.length:0),c:'#7c3aed',icon:'⚡'},
+                        {l:'Max Upah',v:fRp(akumulasi[0]?.totalSemua||0),c:'#0891b2',icon:'🏆'},
+                      ].map((s,i)=>(
+                        <div key={i} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'11px 12px'}}>
+                          <div style={{fontSize:'1rem',marginBottom:3}}>{s.icon}</div>
+                          <div style={{fontSize:'.55rem',fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--muted)',marginBottom:2}}>{s.l}</div>
+                          <div style={{fontSize:'.9rem',fontWeight:900,color:s.c}}>{s.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+      </div>
+
+      {/* ════ BOTTOM TAB NAVIGATION ════ */}
+      <div className="bottom-nav">
+        <div className="bottom-nav-inner">
+          {TABS.map(t=>(
+            <button key={t.id} className={`bnav-item ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+              {t.id==='log'&&history.length>0&&<span className="bnav-badge">{history.length}</span>}
+              <Ic n={t.icon} s={20}/>
+              <span className="bnav-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ════ FOOTER BAR ════ */}
+      <div className="footer-bar">
+        <div className="footer-inner">
+          <div className="footer-stats">
+            {[{l:'Batch',v:stats.totalBatch,c:'#60a5fa'},{l:'Pegawai',v:stats.totalPegawai,c:'#34d399'},{l:'Total Gaji',v:fRp(stats.totalGaji),c:'#fbbf24'},{l:'Avg/Orang',v:fRp(stats.avgPerOrang),c:'#f87171'}].map((s,i)=>(
+              <div key={i} className="fstat"><div className="fstat-lbl">{s.l}</div><div className="fstat-val" style={{color:s.c}}>{s.v}</div></div>
+            ))}
+          </div>
+          <div className="footer-btns" style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+            <span className="footer-copy" style={{fontSize:'.52rem',color:'rgba(255,255,255,.3)',fontWeight:600,letterSpacing:'.02em',lineHeight:1.3,textAlign:'right',whiteSpace:'nowrap'}}>© 2026<br/>Rahmat Susanto</span>
+            <button className="btn btn-ghost btn-sm" style={{color:'rgba(255,255,255,.4)',borderColor:'rgba(255,255,255,.12)',fontSize:'.6rem',padding:'4px 8px',flexShrink:0}} onClick={()=>setShowChangelog(true)}>v8 📋</button>
+          </div>
+        </div>
+      </div>
+
+      {/* CHANGELOG MODAL */}
+      {showChangelog&&(
+        <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)setShowChangelog(false);}}>
+          <div className="modal" style={{maxWidth:420,maxHeight:'85vh',overflowY:'auto',padding:'22px 24px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:16}}>
+              <div style={{width:38,height:38,background:'#eff6ff',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#2563eb',flexShrink:0,fontSize:'1.1rem'}}>📋</div>
+              <div style={{flex:1}}><h2 style={{fontSize:'.92rem',fontWeight:900,margin:0,textAlign:'left'}}>Changelog v8</h2></div>
+              <button className="btn btn-ghost btn-sm" style={{padding:'5px'}} onClick={()=>setShowChangelog(false)}><Ic n="x" s={15}/></button>
+            </div>
+            <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:12,padding:'12px 14px'}}>
+              {[
+                {icon:'📄',t:'Slip Gaji Per Orang (BARU!)',d:'Klik "Lihat Slip Gaji" di tab Pegawai untuk cetak/simpan slip gaji per karyawan. Filter per bulan, tampilkan detail semua batch, dan tombol cetak/PDF.'},
+                {icon:'🖨️',t:'Cetak & Simpan PDF',d:'Slip gaji bisa dicetak langsung dari browser atau disimpan sebagai PDF. Tersedia di tab Pegawai (tiap kartu) dan di log detail batch.'},
+                {icon:'📱',t:'Optimasi Android & iOS',d:'Safe area support untuk notch/home indicator, tap highlight dihapus, font-size diperbesar agar tidak auto-zoom, dan bottom sheet modal di layar kecil.'},
+                {icon:'📦',t:'Kalkulator Box → Dus',d:'Input Jml Box + TDS/Box otomatis mengisi Hasil Dus. Badge "Auto" muncul saat mode TDS aktif.'},
+              ].map((item,i,arr)=>(
+                <div key={i} style={{display:'flex',gap:9,paddingBottom:10,marginBottom:10,borderBottom:i<arr.length-1?'1px solid rgba(37,99,235,.1)':'none'}}>
+                  <span style={{fontSize:'1rem',flexShrink:0}}>{item.icon}</span>
+                  <div><div style={{fontSize:'.76rem',fontWeight:800,color:'#1d4ed8',marginBottom:2}}>{item.t}</div><div style={{fontSize:'.73rem',fontWeight:500,color:'var(--ink)',lineHeight:1.55}}>{item.d}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+// Fix passive event listeners for iOS scroll performance
+(function(){
+  const orig = EventTarget.prototype.addEventListener;
+  // Only patch wheel and touchstart/move for passive
+  ['touchstart','touchmove','wheel'].forEach(type => {
+    document.addEventListener(type, function(){}, {passive: true});
+  });
+})();
+
+</script>
+<script>
+/* ═══════════════════════════════════════
+   SERVICE WORKER — offline cache
+═══════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  const SW_CODE = `
+const CACHE = 'upah-borongan-v1';
+const ASSETS = [
+  'https://unpkg.com/react@18/umd/react.production.min.js',
+  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+  'https://unpkg.com/@babel/standalone/babel.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
+  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap',
+];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(()=>{})));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))
+  ));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(resp => {
+        if (!resp || resp.status !== 200 || resp.type === 'opaque') return resp;
+        const clone = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return resp;
+      }).catch(() => cached);
+    })
+  );
+});
+`;
+  const swBlob = new Blob([SW_CODE], {type:'application/javascript'});
+  const swUrl  = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl, {scope: '/'}).catch(()=>{});
+}
+
+/* ═══════════════════════════════════════
+   PWA INSTALL PROMPT BANNER
+═══════════════════════════════════════ */
+(function(){
+  let deferredPrompt = null;
+  const DISMISSED_KEY = 'pwa_install_dismissed';
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (localStorage.getItem(DISMISSED_KEY)) return;
+    showBanner();
+  });
+
+  function showBanner() {
+    if (document.getElementById('pwa-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'pwa-banner';
+    banner.innerHTML = `
+      <div style="
+        position:fixed;bottom:130px;left:12px;right:12px;z-index:9999;
+        background:linear-gradient(135deg,#1e3a8a,#1d4ed8);
+        border:1px solid rgba(96,165,250,.35);
+        border-radius:16px;padding:14px 16px;
+        box-shadow:0 8px 32px rgba(0,0,0,.45);
+        display:flex;align-items:center;gap:12px;
+        animation:slideUp .3s ease;
+        font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+      ">
+        <style>@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}</style>
+        <div style="width:44px;height:44px;background:rgba(255,255,255,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem">🧮</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:900;font-size:.88rem;color:#fff;margin-bottom:2px">Install Upah Borongan</div>
+          <div style="font-size:.7rem;color:rgba(255,255,255,.65);font-weight:500">Tambahkan ke layar utama untuk akses cepat & offline</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button id="pwa-install-btn" style="
+            background:#fff;color:#1d4ed8;border:none;border-radius:9px;
+            padding:7px 14px;font-family:inherit;font-weight:900;font-size:.72rem;
+            cursor:pointer;white-space:nowrap;
+          ">⬇ Install</button>
+          <button id="pwa-dismiss-btn" style="
+            background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:none;border-radius:9px;
+            padding:5px 14px;font-family:inherit;font-weight:700;font-size:.65rem;
+            cursor:pointer;
+          ">Nanti</button>
+        </div>
+      </div>`;
+    document.body.appendChild(banner);
+
+    document.getElementById('pwa-install-btn').onclick = async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      banner.remove();
+      if (outcome === 'accepted') {
+        // Show success toast
+        const t = document.createElement('div');
+        t.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;background:#059669;color:#fff;padding:10px 16px;border-radius:12px;font-family:inherit;font-weight:700;font-size:.8rem;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+        t.textContent = '✓ Berhasil diinstall!';
+        document.body.appendChild(t);
+        setTimeout(()=>t.remove(), 3500);
+      }
+    };
+    document.getElementById('pwa-dismiss-btn').onclick = () => {
+      localStorage.setItem(DISMISSED_KEY, '1');
+      banner.remove();
+    };
+  }
+
+  // Untuk iOS Safari — tampilkan panduan manual
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = ('standalone' in navigator && navigator.standalone) ||
+                         window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !isInStandalone && !localStorage.getItem(DISMISSED_KEY)) {
+    setTimeout(() => {
+      const banner = document.createElement('div');
+      banner.id = 'pwa-banner';
+      banner.innerHTML = `
+        <div style="
+          position:fixed;bottom:130px;left:12px;right:12px;z-index:9999;
+          background:linear-gradient(135deg,#1e3a8a,#1d4ed8);
+          border:1px solid rgba(96,165,250,.35);
+          border-radius:16px;padding:14px 16px;
+          box-shadow:0 8px 32px rgba(0,0,0,.45);
+          font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+          animation:slideUp .3s ease;
+        ">
+          <style>@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}</style>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:1.3rem">📲</span>
+            <div style="font-weight:900;font-size:.88rem;color:#fff">Install ke Layar Utama</div>
+            <button id="ios-dismiss" style="margin-left:auto;background:none;border:none;color:rgba(255,255,255,.6);font-size:1.1rem;cursor:pointer;padding:2px">✕</button>
+          </div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.8);line-height:1.6;font-weight:500">
+            1. Tap tombol <strong style="color:#fff">⎙ Bagikan</strong> di bawah browser<br>
+            2. Pilih <strong style="color:#fff">"Tambahkan ke Layar Utama"</strong><br>
+            3. Tap <strong style="color:#fff">Tambahkan</strong> — selesai! 🎉
+          </div>
+        </div>`;
+      document.body.appendChild(banner);
+      document.getElementById('ios-dismiss').onclick = () => {
+        localStorage.setItem(DISMISSED_KEY, '1');
+        banner.remove();
+      };
+    }, 3000);
+  }
+})();
+</script>
+</body>
+</html>
